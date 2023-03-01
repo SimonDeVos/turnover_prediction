@@ -1,5 +1,13 @@
 #TODO add import statements
-
+import numpy as np
+import pandas as pd
+import random
+from sklearn.preprocessing import StandardScaler
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
+import seaborn as sns
+from category_encoders import woe
+import time
 
 
 """Contents:
@@ -15,7 +23,6 @@ dataset-specific functions:
     def preprocess_babushkin()
     def preprocess_eds()
     def preprocess_ibm()
-
 
 """
 
@@ -86,10 +93,42 @@ def handle_missing_data(df_train, df_val, df_test, categorical_variables):
 """DATASET-SPECIFIC PREPROCESSING FUNCTIONS"""
 
 def preprocess_acerta():
-
-
-
     return covariates, labels, amounts, cost_matric, categorical_variables
 
+def preprocess_ibm():
 
+    try:
+        df = pd.read_csv('data/ibm.csv', sep=',')
+    except FileNotFoundError:
+        df = pd.read_csv('../data/ibm.csv', sep=',')
+
+    # Drop ID and useless columns
+    df = df.drop('EmployeeNumber', 1)
+    df = df.drop('EmployeeCount', 1)
+    df = df.drop('Over18', 1)
+    df = df.drop('StandardHours', 1)
+
+    # Transform 'Attrition' from Yes/No to 1/0
+    df['Attrition'] = df['Attrition'].replace({'Yes': 1, 'No': 0})
+
+    # Split into covariates, labels
+    labels = df['Attrition'].values.astype(np.int)
+    covariates = df.drop('Attrition', 1)
+
+    # Create cost matrix
+    income = covariates['MonthlyIncome'].values
+
+    n_samples = income.shape[0]
+    cost_matrix = np.zeros((n_samples, 2, 2))     # cost_matrix [[TN, FN], [FP, TP]]
+    cost_matrix[:, 0, 0] = 0.0
+    cost_matrix[:, 0, 1] = 6*income #not detected, lose employee, cost is 6 months salary
+    cost_matrix[:, 1, 0] = income   #predicted, not lose employee, cost is 1 month salary (intervention)
+    cost_matrix[:, 1, 1] = income   #predicted, lost employee anyway, cost is 1 month salary (intervention)
+
+    # List categorical variables
+    categorical_variables = ['BusinessTravel', 'Department', 'EducationField', 'Gender', 'JobRole', 'MaritalStatus', 'OverTime']
+
+    amounts = income
+
+    return covariates, labels, amounts, cost_matrix, categorical_variables
 

@@ -1,0 +1,83 @@
+Experiment done at:  01-03-23  |  17:24
+
+Settings: {
+   "class_costs": false,
+   "folds": 5,
+   "repeats": 2,
+   "val_ratio": 0.25,
+   "l1_regularization": false,
+   "lambda1_options": [
+      0,
+      1e-05,
+      0.0001,
+      0.001,
+      0.01,
+      0.1
+   ],
+   "l2_regularization": false,
+   "lambda2_options": [
+      0,
+      1e-05,
+      0.0001,
+      0.001,
+      0.01,
+      0.1
+   ],
+   "neurons_options": [
+      16,
+      32,
+      64,
+      128,
+      256,
+      512,
+      1024
+   ]
+}
+Datasets: {
+   "acerta": false,
+   "babushkin": false,
+   "eds": false,
+   "ibm": true,
+   "imec": false
+}
+Methodologies: {
+   "ab": false,
+   "ann": false,
+   "bnb": false,
+   "cb": false,
+   "dt": false,
+   "gnb": false,
+   "gb": false,
+   "knn": false,
+   "lgbm": false,
+   "lda": false,
+   "lr": true,
+   "mnb": false,
+   "pac": false,
+   "p": false,
+   "qda": false,
+   "rf": false,
+   "rc": false,
+   "sgd": false,
+   "svm": false,
+   "xgb": false
+}
+Evaluators: {
+   "traditional": true,
+   "ROC": true,
+   "AUC": true,
+   "PR": true,
+   "H_measure": true,
+   "brier": true,
+   "recall_overlap": true,
+   "recall_correlation": true,
+   "savings": true,
+   "AEC": true,
+   "ROCIV": true,
+   "PRIV": true,
+   "rankings": true,
+   "time": true
+}
+
+_____________________________________________________________________
+

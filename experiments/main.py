@@ -40,7 +40,7 @@ datasets = {
     'acerta': False,
     'babushkin': False,
     'eds': False,
-    'ibm': False,
+    'ibm': True,
     'imec': False
 }
 
@@ -50,13 +50,12 @@ methodologies = {
     'bnb': False,   # Bernoulli Naive Bayes (BNB) - sklearn.naive_bayes.BernoulliNB
     'cb': False,    # CatBoost (CB) - catboost.CatBoostClassifier
     'dt': False,    # Decision Tree (DT) - sklearn.tree.DecisionTreeClassifier
-    'xgb': False,   # Extreme Gradient Boosting (XGBoost) - xgboost.XGBClassifier
     'gnb': False,   # Gaussian Naive Bayes (GNB) - sklearn.naive_bayes.GaussianNB
     'gb': False,    # Gradient Boosting (GB) - sklearn.ensemble.GradientBoostingClassifier
     'knn': False,   # K-Nearest Neighbors (KNN) - sklearn.neighbors.KNeighborsClassifier
     'lgbm': False,  # LightGBM (LGBM) - lightgbm.LGBMClassifier
     'lda': False,   # Linear Discriminant Analysis (LDA) - sklearn.discriminant_analysis.LinearDiscriminantAnalysis
-    'lr': False,    # Logistic Regression (LR) - sklearn.linear_model.LogisticRegression
+    'lr': True,    # Logistic Regression (LR) - sklearn.linear_model.LogisticRegression
     'mnb': False,   # Multinomial Naive Bayes (MNB) - sklearn.naive_bayes.MultinomialNB
     'pac': False,   # Passive Aggressive Classifier (PAC) - sklearn.linear_model.PassiveAggressiveClassifier
     'p': False,     # Perceptron (P) - sklearn.linear_model.Perceptron
@@ -65,6 +64,7 @@ methodologies = {
     'rc': False,    # Ridge Classifier (RC) - sklearn.linear_model.RidgeClassifier
     'sgd': False,   # Stochastic Gradient Descent (SGD) - sklearn.linear_model.SGDClassifier
     'svm': False,   # Support Vector Machine (SVM) - sklearn.svm.SVC
+    'xgb': False  # Extreme Gradient Boosting (XGBoost) - xgboost.XGBClassifier
 }
 
 thresholding = {
@@ -73,7 +73,7 @@ thresholding = {
     't_cdcs': False,    # Class-dependent cost-sensitive threshold
     't_cdcs_cal': False,# Class-dependent cost-sensitive threshold with calibrated probabilities
     't_class_imb': False,# Class imbalance Threshold
-    't_ins': False      # Class insensitive threshold (0.5)
+    't_ins': True      # Class insensitive threshold (0.5)
 }
 
 evaluators = {

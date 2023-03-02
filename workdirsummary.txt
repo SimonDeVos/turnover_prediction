@@ -1,8 +1,8 @@
-Experiment done at:  01-03-23  |  17:24
+Experiment done at:  02-03-23  |  16:47
 
 Settings: {
    "class_costs": false,
-   "folds": 5,
+   "folds": 3,
    "repeats": 2,
    "val_ratio": 0.25,
    "l1_regularization": false,
@@ -60,22 +60,22 @@ Methodologies: {
    "rc": false,
    "sgd": false,
    "svm": false,
-   "xgb": false
+   "xgb": true
 }
 Evaluators: {
    "traditional": true,
-   "ROC": true,
+   "ROC": false,
    "AUC": true,
-   "PR": true,
-   "H_measure": true,
-   "brier": true,
-   "recall_overlap": true,
-   "recall_correlation": true,
+   "PR": false,
+   "H_measure": false,
+   "brier": false,
+   "recall_overlap": false,
+   "recall_correlation": false,
    "savings": true,
-   "AEC": true,
-   "ROCIV": true,
-   "PRIV": true,
-   "rankings": true,
+   "AEC": false,
+   "ROCIV": false,
+   "PRIV": false,
+   "rankings": false,
    "time": true
 }
 

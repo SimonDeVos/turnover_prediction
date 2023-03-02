@@ -1,11 +1,14 @@
 
 #TODO add imports
 import numpy as np
+import pandas as pd
 from sklearn.linear_model import LogisticRegression
+import xgboost
 from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedShuffleSplit
 import time
 from performance_metrics.performance_metrics import get_performance_metrics, evaluate_experiments
 from preprocessing.preprocessing import preprocess_ibm, handle_missing_data, convert_categorical_variables, standardize
+from sklearn.model_selection import GridSearchCV
 
 """Contents:
 define class
@@ -48,42 +51,49 @@ define class
 
 
 class Experiment:
-    def __init__(self, settings, datasets, methodologies, thresholding, evaluators):
+    def __init__(self, settings, datasets, methodologies, thresholding, evaluators, hyperparameters):
 
         self.settings = settings
 
-        self.l1 = self.settings['l1_regularization']
-        self.lambda1_list = self.settings['lambda1_options']
-        self.l2 = self.settings['l2_regularization']
-        self.lambda2_list = self.settings['lambda2_options']
-        self.neurons_list = self.settings['neurons_options']
+#        self.l1 = self.settings['l1_regularization']
+#        self.lambda1_list = self.settings['lambda1_options']
+#        self.l2 = self.settings['l2_regularization']
+#        self.lambda2_list = self.settings['lambda2_options']
+#        self.neurons_list = self.settings['neurons_options']
 
-        if self.l1 and self.l2:
-            raise ValueError('Only l1 or l2 regularization allowed, not both!')
+#        if self.l1 and self.l2:
+#            raise ValueError('Only l1 or l2 regularization allowed, not both!')
 
         self.datasets = datasets
+        # Verify that only one dataset is selected
+        if sum(self.datasets.values()) != 1:
+            raise ValueError('Select only one dataset!')
         self.methodologies = methodologies
         self.thresholding = thresholding
+        if sum(self.thresholding.values()) != 1:
+            raise ValueError('Select only one thresholding strategy!')
+
+        self.hyperparameters = hyperparameters
+
         self.evaluators = evaluators
 
         self.results = {}   #TODO: others will be redundant (if only one .results is used - only one thresholding strategy at the time)
-        self.results_t_idcs = {}
-        self.results_t_idcs_cal = {}
-        self.results_t_cdcs = {}
-        self.results_t_cdcs_cal = {}
-        self.results_t_class_imb = {}
-        self.results_t_ins = {}
+#        self.results_t_idcs = {}
+#        self.results_t_idcs_cal = {}
+#        self.results_t_cdcs = {}
+#        self.results_t_cdcs_cal = {}
+#        self.results_t_class_imb = {}
+#        self.results_t_ins = {}
 
 
     def run(self, directory):
         """
         LOAD AND PREPROCESS DATA
         """
+        global xgb
         print('\n\n************** LOADING DATA **************\n')
 
-        # Verify that only one dataset is selected
-        if sum(self.datasets.values()) != 1:
-            raise ValueError('Select only one dataset!')
+
 
         if self.datasets['ibm']:
             print('ibm')
@@ -117,12 +127,12 @@ class Experiment:
         for key in self.evaluators.keys():
             if self.evaluators[key]: #TODO: add here constraints that matrices are only made if thresholding strategy is selected?
                 self.results[key] = np.empty(shape=(n_methodologies, folds * repeats), dtype='object') #TODO: other self.results_t_....lines can be deleted when only one thresholding strat is chosen
-                self.results_t_idcs[key] =      np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
-                self.results_t_idcs_cal[key] =  np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
-                self.results_t_cdcs[key] =      np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
-                self.results_t_cdcs_cal[key] =  np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
-                self.results_t_class_imb[key] = np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
-                self.results_t_ins[key] =       np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
+#                self.results_t_idcs[key] =      np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
+#                self.results_t_idcs_cal[key] =  np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
+#                self.results_t_cdcs[key] =      np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
+#                self.results_t_cdcs_cal[key] =  np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
+#                self.results_t_class_imb[key] = np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
+#                self.results_t_ins[key] =       np.empty(shape=(n_methodologies, folds * repeats), dtype='object')
 
         for i, (train_val_index, test_index) in enumerate(rskf.split(covariates, prepr)):
             print('\nCross validation: ' + str(i + 1))
@@ -155,7 +165,11 @@ class Experiment:
             x_train, x_val, x_test = convert_categorical_variables(x_train, y_train, x_val, x_test, categorical_variables)
             x_train, x_val, x_test = standardize(x_train=x_train, x_val=x_val, x_test=x_test)
 
-            """Assign thresholds for the different strategies:""" #TODO: set check that only one thresholding strategy can be used
+            #After preprocessing properly, concatenate train and val into train_val
+            x_train_val = np.concatenate((x_train, x_val))
+            y_train_val = np.concatenate((y_train, y_val))
+
+            """Assign thresholds for the different strategies:"""
             #   Instance-dependent cost-sensitive threshold
             if self.thresholding['t_idcs']:
                 threshold = (cost_matrix_test[:, 1, 0] - cost_matrix_test[:, 0, 0]) / (cost_matrix_test[:, 1, 0] - cost_matrix_test[:, 0, 0] + cost_matrix_test[:, 0,1] - cost_matrix_test[:, 1, 1])
@@ -199,38 +213,57 @@ class Experiment:
 
             # Logistic regression
             if self.methodologies['lr']:
-                print('\tlogistic regression:')
+                print('\tlr')
 
                 lr = LogisticRegression()
 
+                param_grid = self.hyperparameters['lr']
+
+                gs_lr = GridSearchCV(lr, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                # Fitting the grid search object to the train_val data
                 start = time.perf_counter()
-                lr.fit(x_train, y_train)
+                gs_lr.fit(x_train_val, y_train_val)
                 end = time.perf_counter()
 
-#                init_logit = LogisticRegression(penalty='none', max_iter=1, verbose=0, solver='sag', n_jobs=-1)
-#                init_logit.fit(x_train, y_train)
-#                init_theta = np.insert(init_logit.coef_, 0, values=init_logit.intercept_)
+                print("Best hyperparameters:", gs_lr.best_params_)
 
-#                logit = CSLogit(init_theta, obj='ce')
-                #TODO: tune hyperparas on separate validations set
+                lambda1 = None #TODO: can be deleted
+                lambda2 = None
 
-                # Tune regularization parameters, if necessary
- #               logit.tune(self.l1, self.lambda1_list, self.l2, self.lambda2_list, x_train, y_train, cost_matrix_train,
- #                          x_val, y_val, cost_matrix_val)
+                lr_proba = gs_lr.predict_proba(x_test)[:, 1]
+                lr_proba_val = gs_lr.predict_proba(x_val)[:, 1]
 
-                lambda1 = 0#lr.lambda1  #TODO: add when tuned hyperparas on separate val set
-                lambda2 = 0#lr.lambda2
-
-#                start = time.perf_counter()
-#                logit.fitting(x_train, y_train, cost_matrix_train)
-#                end = time.perf_counter()
-
-                lr_proba = lr.predict_proba(x_test)[:, 1]       #predict_proba returns two values: for the neg and pos class. keep only one
-                lr_proba_val = lr.predict_proba(x_val)[:, 1]
-
+                #TODO: update 'info': only time is relevant
                 info = {'time': end - start, 'lambda1': lambda1, 'lambda2': lambda2, 'n_neurons': 0}
 
                 evaluate_model(lr_proba_val, lr_proba, i, index, info)
+
+                index += 1
+
+            #XGBoosting
+            if self.methodologies['xgb']:
+                print('\txgb')
+
+                xgb = xgboost.XGBClassifier()
+
+                param_grid = self.hyperparameters['xgb']
+
+                gs_xgb = GridSearchCV(xgb, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                # Fitting the grid search object to the train_val data
+                start = time.perf_counter()
+                gs_xgb.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print("Best hyperparameters:", gs_xgb.best_params_)
+
+                xgb_proba = gs_xgb.predict_proba(x_test)[:, 1]
+                xgb_proba_val = gs_xgb.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(xgb_proba_val, xgb_proba, i, index, info)
 
                 index += 1
 
@@ -247,7 +280,8 @@ class Experiment:
         #write to file
             #jfkdlsm
 
-        print('\n*** Results ***\n')
+        print('\n*** Results ***')
+        print('Thresholding method: '+str(self.thresholding)+'\n')
         evaluate_experiments(evaluators=self.evaluators,
                              methodologies=self.methodologies,
                              thresholding=self.thresholding,

@@ -35,38 +35,38 @@ settings = {
 #    'lambda2_options': [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
 #    'neurons_options': [2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10],
 
-    'cat_encoder': 1 #1: one-hot, 2: WOE,
+    'cat_encoder': 2 #1: one-hot, 2: WOE,
 }
 
 datasets = {
     'acerta': False,    # not implemented
     'babushkin': False, # not implemented
-    'eds': True,    # TODO: no costs specified (currently, misclassified = 1, correct = 0)
-    'ibm': False,
+    'eds': False,    # TODO: no costs specified (currently, misclassified = 1, correct = 0)
+    'ibm': True,
     'imec': False   # not implemented
 }
 
 methodologies = {
-    'ab': False,    # AdaBoost (AB) -               implemented
+    'ab': True,    # AdaBoost (AB) -                           implemented
     'ann': False,   # Artificial Neural Networks (ANN) - sklearn.neural_network.MLPClassifier
-    'bnb': False,   # Bernoulli Naive Bayes (BNB) - implemented
-    'cb': False,     # CatBoost (CB) -              implemented #TODO: takes long to train
-    'dt': False,    # Decision Tree (DT)-           implemented
-    'gnb': False,   # Gaussian Naive Bayes (GNB)-   implemented
-    'gb': False,    # Gradient Boosting (GB)-       implemented
-    'knn': False,    # K-Nearest Neighbors (KNN) -  implemented
-    'lgbm': False,   # LightGBM (LGBM) -            implemented
-    'lda': False,   # Linear Discriminant Analysis (LDA) - implemented
-    'lr': False,    # Logistic Regression (LR) -    implemented
-    'mnb': False,   # Multinomial Naive Bayes (MNB) - implemented
-    'pac': False,   # Passive Aggressive Classifier (PAC) - implemented
-    'per': False,   # Perceptron (Per) -             implemented
-    'qda': False,   # Quadratic Discriminant Analysis (QDA) - implemented #TODO: might give "UserWarning: Variables are collinear"
-    'rf': False,    # Random Forest (RF) -          implemented
-    'rc': False,    # Ridge Classifier (RC) -       implemented
-    'sgd': True,   # Stochastic Gradient Descent (SGD) - sklearn.linear_model.SGDClassifier
-    'svm': False,   # Support Vector Machine (SVM) - sklearn.svm.SVC
-    'xgb': False    # Extreme Gradient Boosting (XGBoost) - implemented
+    'bnb': True,   # Bernoulli Naive Bayes (BNB) -             implemented
+    'cb': True,     # CatBoost (CB) -                          implemented #TODO: takes long to train
+    'dt': True,    # Decision Tree (DT)-                       implemented
+    'gnb': True,   # Gaussian Naive Bayes (GNB)-               implemented
+    'gb': True,    # Gradient Boosting (GB)-                   implemented
+    'knn': True,    # K-Nearest Neighbors (KNN) -              implemented
+    'lgbm': True,   # LightGBM (LGBM) -                        implemented
+    'lda': True,   # Linear Discriminant Analysis (LDA) -      implemented
+    'lr': True,    # Logistic Regression (LR) -                implemented
+    'mnb': True,   # Multinomial Naive Bayes (MNB) -           implemented
+    'pac': True,   # Passive Aggressive Classifier (PAC) -     implemented
+#    'per': True,   # Perceptron (Per) -                        implemented
+    'qda': True,   # Quadratic Discriminant Analysis (QDA) -   implemented #TODO: might give "UserWarning: Variables are collinear"
+    'rf': True,    # Random Forest (RF) -                      implemented
+    'rc': True,    # Ridge Classifier (RC) -                   implemented
+    'sgd': True,   # Stochastic Gradient Descent (SGD) -       implemented
+    'svm': True,   # Support Vector Machine (SVM) -             implemented
+    'xgb': True    # Extreme Gradient Boosting (XGBoost) -     implemented
 }
 
 thresholding = {
@@ -108,9 +108,9 @@ hyperparameters = {
     },
 
     'bnb': {
-        'alpha': [0.1],          # [0.01, 0.1, 1.0],
-        'binarize': [0.0],  # [None, 0.0, 0.5, 1.0],
-        'fit_prior': [True]          # [True, False]
+        'alpha': [0.1],         # [0.01, 0.1, 1.0],
+        'binarize': [0.0],      # [None, 0.0, 0.5, 1.0],
+        'fit_prior': [True]     # [True, False]
     },
 
     'cb': {
@@ -170,10 +170,10 @@ hyperparameters = {
         'fit_prior': [True]},   # [True, False]},
 
     'pac': {
-        'C': [0.1, 0.5, 1.0, 2.0],
-        'max_iter': [1000, 2000, 5000],
-        'tol': [1e-3, 1e-4, 1e-5],
-        'early_stopping': [True, False]},
+        'C': [0.5],                 # [0.1, 0.5, 1.0, 2.0],
+        'max_iter': [2000],         # [1000, 2000, 5000],
+        'tol': [1e-3],              # [1e-3, 1e-4, 1e-5],
+        'early_stopping': [True]},   # [True, False]},
 
     'per': {
         'penalty': ['l2'],      # [None, 'l2', 'l1', 'elasticnet'],
@@ -182,9 +182,9 @@ hyperparameters = {
         'tol': [1e-3]},         # [1e-3, 1e-4, 1e-5]},
 
     'qda': {
-        'reg_param': [0.0, 0.1, 0.5, 1.0],
-        'store_covariance': [True, False],
-        'tol': [1e-3, 1e-4, 1e-5]},
+        'reg_param': [1.0],         # [0.0, 0.1, 0.5, 1.0],
+        'store_covariance': [True], # [True, False],
+        'tol': [1e-3]},             # [1e-3, 1e-4, 1e-5]},
 
     'rf': {
         'n_estimators': [50],       # [50, 100, 200],
@@ -208,9 +208,9 @@ hyperparameters = {
     },
 
     'svm': {
-        'C': [0.1, 1, 10, 100],
-        'kernel': ['linear', 'poly', 'rbf', 'sigmoid'],
-        'gamma': ['scale', 'auto']
+        'C': [1],               # [0.1, 1, 10, 100],
+        'kernel': ['linear'],   # ['linear', 'poly', 'rbf', 'sigmoid'],
+        'gamma': ['auto']       # ['scale', 'auto']
     },
 
     'xgb': {

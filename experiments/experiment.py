@@ -23,7 +23,7 @@ from sklearn.model_selection import GridSearchCV
 from lightgbm import LGBMClassifier
 
 import warnings
-#warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore')
 
 
 """Contents:
@@ -506,6 +506,7 @@ class Experiment:
 
                 index += 1
 
+            """
             # Perceptron
             if self.methodologies['per']:
                 model = Perceptron()
@@ -526,6 +527,7 @@ class Experiment:
                 evaluate_model(proba_val, proba_test, i, index, info)
 
                 index += 1
+            """
 
             # Quadratic Discriminant Analysis
             if self.methodologies['qda']:
@@ -623,8 +625,8 @@ class Experiment:
 
                 print('\tsvm - best hyperparameters:', gs.best_params_)
 
-                proba_test = gs.predict_proba(x_test)[:, 1]
-                proba_val = gs.predict_proba(x_val)[:, 1]
+                proba_test = gs.decision_function(x_test)
+                proba_val = gs.decision_function(x_val)
 
                 info = {'time': end - start}
 
@@ -634,8 +636,6 @@ class Experiment:
 
             #XGBoosting
             if self.methodologies['xgb']:
-                print('\txgb')
-
                 xgb = xgboost.XGBClassifier()
 
                 param_grid = self.hyperparameters['xgb']
@@ -647,7 +647,7 @@ class Experiment:
                 gs_xgb.fit(x_train_val, y_train_val)
                 end = time.perf_counter()
 
-                print("Best hyperparameters:", gs_xgb.best_params_)
+                print('\txgb - best hyperparameters:', gs_xgb.best_params_)
 
                 xgb_proba = gs_xgb.predict_proba(x_test)[:, 1]
                 xgb_proba_val = gs_xgb.predict_proba(x_val)[:, 1]

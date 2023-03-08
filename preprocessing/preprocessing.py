@@ -163,7 +163,7 @@ def handle_missing_data(df_train, df_val, df_test, categorical_variables):
 # List categorical variables
 
 
-def preprocess_acerta():
+def preprocess_acerta(): #TODO
     return covariates, labels, amounts, cost_matrix, categorical_variables
 
 def preprocess_eds():
@@ -228,9 +228,9 @@ def preprocess_ibm():
     n_samples = income.shape[0]
     cost_matrix = np.zeros((n_samples, 2, 2))     # cost_matrix [[TN, FN], [FP, TP]]
     cost_matrix[:, 0, 0] = 0.0
-    cost_matrix[:, 0, 1] = 6*income #not detected, lose employee, cost is 6 months salary
-    cost_matrix[:, 1, 0] = 500   #predicted, not lose employee, cost is fixed cost 500 (intervention)
-    cost_matrix[:, 1, 1] = 500   #predicted, lost employee anyway, cost is fixed cost 500 (intervention)
+    cost_matrix[:, 0, 1] = income #not detected, lose employee, cost is 6 months salary
+    cost_matrix[:, 1, 0] = income   #predicted, not lose employee, cost is fixed cost 500 (intervention)
+    cost_matrix[:, 1, 1] = 0   #predicted, lost employee anyway, cost is fixed cost 500 (intervention)
 
     # List categorical variables
     categorical_variables = ['BusinessTravel', 'Department', 'EducationField', 'Gender', 'JobRole', 'MaritalStatus', 'OverTime']

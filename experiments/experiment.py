@@ -1,14 +1,30 @@
 
-#TODO add imports
+#TODO add imports and organize them properly
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, AdaBoostClassifier
+from sklearn.linear_model import LogisticRegression, PassiveAggressiveClassifier, Perceptron, RidgeClassifier, \
+    SGDClassifier
 import xgboost
 from sklearn.model_selection import RepeatedStratifiedKFold, StratifiedShuffleSplit
 import time
+from catboost import CatBoostClassifier
+from sklearn.naive_bayes import GaussianNB, MultinomialNB, BernoulliNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
+
 from performance_metrics.performance_metrics import get_performance_metrics, evaluate_experiments
-from preprocessing.preprocessing import preprocess_ibm, handle_missing_data, convert_categorical_variables, standardize
+from preprocessing.preprocessing import preprocess_ibm, handle_missing_data, convert_categorical_variables, standardize, \
+    preprocess_eds
 from sklearn.model_selection import GridSearchCV
+from lightgbm import LGBMClassifier
+
+import warnings
+#warnings.filterwarnings('ignore')
+
 
 """Contents:
 define class
@@ -161,8 +177,10 @@ class Experiment:
         #            cost_matrix_val = np.tile(cost_matrix_val.mean(axis=0)[None, :], (len(y_val), 1, 1))
 
             # Preprocessing: Handle missing data, convert categorical variables, standardize, convert to numpy
-#            x_train, x_val, x_test, categorical_variables = handle_missing_data(x_train, x_val, x_test, categorical_variables) #TODO: debug
-            x_train, x_val, x_test = convert_categorical_variables(x_train, y_train, x_val, x_test, categorical_variables)
+
+            x_train, x_val, x_test, categorical_variables = handle_missing_data(x_train, x_val, x_test, categorical_variables) #TODO: debug
+            cat_encoder = self.settings['cat_encoder']
+            x_train, x_val, x_test = convert_categorical_variables(x_train, y_train, x_val, x_test, categorical_variables, cat_encoder)
             x_train, x_val, x_test = standardize(x_train=x_train, x_val=x_val, x_test=x_test)
 
             #After preprocessing properly, concatenate train and val into train_val
@@ -203,20 +221,222 @@ class Experiment:
                 threshold = np.repeat(0.5, len(y_test))
 
             # Define evaluation procedure for different thresholding strategies
-            def evaluate_model(proba_val, proba, j, index, info):
+            def evaluate_model(proba_val, proba_test, i, index, info):
 
                 #round proba to predictions {0,1}, dependent on defined threshold.
-                pred = (proba > threshold).astype(int)
+                pred_test = (proba_test > threshold).astype(int)
 #                self.results_tr_instance = get_performance_metrics(self.evaluators, self.results_tr_instance, j, index, cost_matrix_test, y_test, proba, pred, info)
-                self.results = get_performance_metrics(self.evaluators, self.results, j, index, cost_matrix_test, y_test, proba, pred, info)
+                self.results = get_performance_metrics(self.evaluators, self.results, i, index, cost_matrix_test, y_test, proba_test, pred_test, info)
 
+
+            """
+            if .... --> select classifier
+                print classifier
+                create calssifier object
+                assign parameter grid
+                create gridsearch cross-validation object
+                Fit the grid search object to the train_val data (which is timed)
+                print best hyperparas
+                predict probabilities for x_test and x_val
+                evaluate model
+                increase index counter
+            """
+
+            # AdaBoost
+            if self.methodologies['ab']:
+                model = AdaBoostClassifier()
+                param_grid = self.hyperparameters['ab']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tab - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Artifical Neural Network  #TODO
+
+            # Bernoulli Naive Bayes
+            if self.methodologies['bnb']:
+                model = BernoulliNB()
+                param_grid = self.hyperparameters['bnb']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tbnb - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # CatBoost
+            if self.methodologies['cb']:
+                model = CatBoostClassifier(silent=True)
+                param_grid = self.hyperparameters['cb']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tcb - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Decision Tree
+            if self.methodologies['dt']:
+                model = DecisionTreeClassifier()
+                param_grid = self.hyperparameters['dt']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tdt - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Gaussian Naive Bayes
+            if self.methodologies['gnb']:
+                model = GaussianNB()
+                param_grid = self.hyperparameters['gnb']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tgnb - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Gradient Goosting
+            if self.methodologies['gb']:
+                model = GradientBoostingClassifier()
+                param_grid = self.hyperparameters['gb']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tgb - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # K-Nearest Neighbors
+            if self.methodologies['knn']:
+
+                model = KNeighborsClassifier()
+                param_grid = self.hyperparameters['knn']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tknn - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # LightGBM
+            if self.methodologies['lgbm']:
+                model = LGBMClassifier(random_state=42)
+                param_grid = self.hyperparameters['lgbm']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tlgbm - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Linear Discriminant Analysis
+            if self.methodologies['lda']:
+                model = LinearDiscriminantAnalysis()
+                param_grid = self.hyperparameters['lda']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tlda - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
 
             # Logistic regression
             if self.methodologies['lr']:
-                print('\tlr')
-
                 lr = LogisticRegression()
-
                 param_grid = self.hyperparameters['lr']
 
                 gs_lr = GridSearchCV(lr, param_grid=param_grid, scoring='accuracy', cv=5)
@@ -226,18 +446,189 @@ class Experiment:
                 gs_lr.fit(x_train_val, y_train_val)
                 end = time.perf_counter()
 
-                print("Best hyperparameters:", gs_lr.best_params_)
-
-                lambda1 = None #TODO: can be deleted
-                lambda2 = None
+                print('\tlr - best hyperparameters:', gs_lr.best_params_)
 
                 lr_proba = gs_lr.predict_proba(x_test)[:, 1]
                 lr_proba_val = gs_lr.predict_proba(x_val)[:, 1]
 
-                #TODO: update 'info': only time is relevant
-                info = {'time': end - start, 'lambda1': lambda1, 'lambda2': lambda2, 'n_neurons': 0}
+                info = {'time': end - start}
 
                 evaluate_model(lr_proba_val, lr_proba, i, index, info)
+
+                index += 1
+
+            # Multinomial Naive Bayes
+            if self.methodologies['mnb']:
+                model = MultinomialNB()
+                param_grid = self.hyperparameters['mnb']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                #TODO: mnb can only handle non-negative input data
+                #extra preprocessing step:
+                scaler = MinMaxScaler()
+                x_train_val_non_neg = scaler.fit_transform(x_train_val)
+                x_val_non_neg = scaler.fit_transform(x_val)
+                x_test_non_neg = scaler.fit_transform(x_test)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val_non_neg, y_train_val)
+                end = time.perf_counter()
+
+                print('\tmnb - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test_non_neg)[:, 1]
+                proba_val = gs.predict_proba(x_val_non_neg)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Passive Aggressive Classifier
+            if self.methodologies['pac']:
+                model = PassiveAggressiveClassifier()
+                param_grid = self.hyperparameters['pac']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tpac - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.decision_function(x_test)
+                proba_val = gs.decision_function(x_val)
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Perceptron
+            if self.methodologies['per']:
+                model = Perceptron()
+                param_grid = self.hyperparameters['per']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tper - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.decision_function(x_test)
+                proba_val = gs.decision_function(x_val)
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Quadratic Discriminant Analysis
+            if self.methodologies['qda']:
+                model = QuadraticDiscriminantAnalysis()
+                param_grid = self.hyperparameters['qda']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tqda - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Random Forest
+            if self.methodologies['rf']:
+                model = RandomForestClassifier()
+                param_grid = self.hyperparameters['rf']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\trf - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Ridge Classifier
+            if self.methodologies['rc']:
+                model = RidgeClassifier()
+                param_grid = self.hyperparameters['rc']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\trc - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.decision_function(x_test)
+                proba_val = gs.decision_function(x_val)
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Stochastic Gradient Descent
+            if self.methodologies['sgd']:
+                model = SGDClassifier()
+                param_grid = self.hyperparameters['sgd']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tsgd - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
+
+                index += 1
+
+            # Support Vector Machine
+            if self.methodologies['svm']:
+                model = SVC()
+                param_grid = self.hyperparameters['svm']
+                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                start = time.perf_counter()
+                gs.fit(x_train_val, y_train_val)
+                end = time.perf_counter()
+
+                print('\tsvm - best hyperparameters:', gs.best_params_)
+
+                proba_test = gs.predict_proba(x_test)[:, 1]
+                proba_val = gs.predict_proba(x_val)[:, 1]
+
+                info = {'time': end - start}
+
+                evaluate_model(proba_val, proba_test, i, index, info)
 
                 index += 1
 

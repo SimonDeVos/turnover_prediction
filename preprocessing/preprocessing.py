@@ -93,6 +93,7 @@ def convert_categorical_variables(x_train, y_train, x_val, x_test, categorical_v
 
 def standardize(x_train, x_val, x_test):
 
+    #print(x_train.dtypes)
     scaler = StandardScaler()
     scaler.fit(x_train)
 
@@ -166,41 +167,6 @@ def handle_missing_data(df_train, df_val, df_test, categorical_variables):
 def preprocess_acerta(): #TODO
     return covariates, labels, amounts, cost_matrix, categorical_variables
 
-def preprocess_eds():
-    #read data
-    try:
-        df = pd.read_csv('data/eds.csv', sep=',')
-    except FileNotFoundError:
-        df = pd.read_csv('../data/eds.csv', sep=',')
-
-    # Drop ID and useless columns
-
-    # fill meaningful NaN
-    df['filed_complaint'].fillna(0, inplace=True)
-    df['recently_promoted'].fillna(0, inplace=True)
-
-    # Transform 'Attrition' from Yes/No to 1/0
-    df['status'] = df['status'].replace({'Left': 1, 'Employed': 0})
-
-    # Split into covariates, labels
-    labels = df['status'].values.astype(int)
-    covariates = df.drop('status', axis=1)
-
-
-    # Create cost matrix
-    n_samples = labels.shape[0]
-    cost_matrix = np.zeros((n_samples, 2, 2))     # cost_matrix [[TN, FN], [FP, TP]]
-    cost_matrix[:, 0, 0] = 0
-    cost_matrix[:, 0, 1] = 1
-    cost_matrix[:, 1, 0] = 1
-    cost_matrix[:, 1, 1] = 0
-
-    # List categorical variables
-    categorical_variables = ['department','salary',]
-
-    amounts = np.ones((n_samples))
-
-    return covariates, labels, amounts, cost_matrix, categorical_variables
 
 def preprocess_ibm():
 
@@ -236,6 +202,216 @@ def preprocess_ibm():
     categorical_variables = ['BusinessTravel', 'Department', 'EducationField', 'Gender', 'JobRole', 'MaritalStatus', 'OverTime']
 
     amounts = income
+
+    return covariates, labels, amounts, cost_matrix, categorical_variables
+
+def preprocess_kaggle1():
+    #read data
+    try:
+        df = pd.read_csv('data/kaggle1.csv', sep=',')
+    except FileNotFoundError:
+        df = pd.read_csv('../data/kaggle1.csv', sep=',')
+
+    # Drop ID and useless columns
+
+    # fill meaningful NaN
+    df['filed_complaint'].fillna(0, inplace=True)
+    df['recently_promoted'].fillna(0, inplace=True)
+
+    # Transform 'Attrition' from Yes/No to 1/0
+    df['status'] = df['status'].replace({'Left': 1, 'Employed': 0})
+
+    # Split into covariates, labels
+    labels = df['status'].values.astype(int)
+    covariates = df.drop('status', axis=1)
+
+
+    # Create cost matrix
+    n_samples = labels.shape[0]
+    cost_matrix = np.zeros((n_samples, 2, 2))     # cost_matrix [[TN, FN], [FP, TP]]
+    cost_matrix[:, 0, 0] = 0
+    cost_matrix[:, 0, 1] = 1
+    cost_matrix[:, 1, 0] = 1
+    cost_matrix[:, 1, 1] = 0
+
+    # List categorical variables
+    categorical_variables = ['department','salary']
+
+    amounts = np.ones((n_samples))
+
+    return covariates, labels, amounts, cost_matrix, categorical_variables
+
+
+def preprocess_kaggle2(): #old name: Babushkin
+    #read data
+    try:
+        df = pd.read_csv('data/kaggle2.csv', sep=',')
+    except FileNotFoundError:
+        df = pd.read_csv('../data/kaggle2.csv', sep=',')
+
+    # Drop ID and useless columns
+
+    # Transform 'gender' (f/m), 'coach' (yes/no), 'greywage' (grey/white), 'head_gender' (f/m) to 1/0
+    df['gender'] = df['gender'].replace({'f': 1, 'm': 0})
+    df['head_gender'] = df['head_gender'].replace({'f': 1, 'm': 0})
+    df['greywage'] = df['greywage'].replace({'grey':1, 'white':0})
+
+
+    # Split into covariates, labels
+    labels = df['event'].values.astype(int)
+    covariates = df.drop('event', axis=1)
+
+    # Create cost matrix
+    n_samples = labels.shape[0]
+    cost_matrix = np.zeros((n_samples, 2, 2))     # cost_matrix [[TN, FN], [FP, TP]]
+    cost_matrix[:, 0, 0] = 0
+    cost_matrix[:, 0, 1] = 1
+    cost_matrix[:, 1, 0] = 1
+    cost_matrix[:, 1, 1] = 0
+
+    # List categorical variables
+    categorical_variables = ['industry','profession','traffic','coach','way']
+
+    # define amounts
+    amounts = np.ones((n_samples))
+
+    return covariates, labels, amounts, cost_matrix, categorical_variables
+
+def preprocess_kaggle3(): #TODO
+    # read data
+    try:
+        df = pd.read_csv('data/kaggle3.csv', sep=',')
+    except FileNotFoundError:
+        df = pd.read_csv('../data/kaggle3.csv', sep=',')
+
+    #remove time element (features do not change over time)
+    df_grouped = df.groupby('EmployeeID').last().reset_index()
+
+    # Drop ID and useless columns
+    df = df_grouped.drop(
+        columns=['EmployeeID', 'recorddate_key', 'birthdate_key', 'orighiredate_key', 'terminationdate_key',
+                 'gender_full', 'terminationdate_key', 'termtype_desc','termreason_desc', 'STATUS_YEAR'])
+
+    # Transform binary vars to 1/0
+    df['gender_short'] = df['gender_short'].replace({'F': 1, 'M': 0})
+    df['STATUS'] = df['STATUS'].replace({'TERMINATED': 1, 'ACTIVE': 0})
+
+    # Split into covariates, labels
+    labels = df['STATUS'].values.astype(int)
+    covariates = df.drop('STATUS', axis=1)
+
+    # Create cost matrix
+    n_samples = labels.shape[0]
+    cost_matrix = np.zeros((n_samples, 2, 2))     # cost_matrix [[TN, FN], [FP, TP]]
+    cost_matrix[:, 0, 0] = 0
+    cost_matrix[:, 0, 1] = 1
+    cost_matrix[:, 1, 0] = 1
+    cost_matrix[:, 1, 1] = 0
+
+    # List categorical variables
+    categorical_variables = ['city_name','department_name','job_title','BUSINESS_UNIT']
+
+    # define amounts
+    amounts = np.ones((n_samples))
+
+    return covariates, labels, amounts, cost_matrix, categorical_variables
+
+def preprocess_kaggle4(): # TODO
+    # read data
+    try:
+        df = pd.read_csv('data/kaggle4.csv', sep=',')
+    except FileNotFoundError:
+        df = pd.read_csv('../data/kaggle4.csv', sep=',')
+
+    # feature engineering, based on temporal data (diff with prev period)
+    # rename columns
+    df = df.rename(columns={'MMM-YY': 'timestamp'})
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='%Y-%m-%d')
+    df['Dateofjoining'] = pd.to_datetime(df['Dateofjoining'], format='%Y-%m-%d')
+    # calculate the time difference in seconds and replace negative values with 0
+    df['tenure'] = (df['timestamp'] - df['Dateofjoining']).dt.days.astype(int).clip(lower=0)
+    df['y'] = np.where(df['LastWorkingDate'].isnull(), 0, 1)
+    df['salary_diff'] = df.groupby('Emp_ID')['Salary'].diff().fillna(0)
+    df['Q_rating_diff'] = df.groupby('Emp_ID')['Quarterly Rating'].diff().fillna(0)
+    df['TBV_diff'] = df.groupby('Emp_ID')['Total Business Value'].diff().fillna(0)
+
+    # Transform binary vars to 1/0
+    df['Gender'] = df['Gender'].replace({'Male': 1, 'Female': 0})
+
+    # Drop ID and useless columns
+    df = df.drop(columns=['Emp_ID','Dateofjoining','LastWorkingDate'])
+
+    # List categorical variables
+    df['timestamp'] = df['timestamp'].astype('object')
+    categorical_variables = ['City', 'Education_Level', 'timestamp']
+
+    # Split into covariates, labels
+    labels = df['y'].values.astype(int)
+    covariates = df.drop('y', axis=1)
+
+    # Create cost matrix
+    n_samples = labels.shape[0]
+    cost_matrix = np.zeros((n_samples, 2, 2))     # cost_matrix [[TN, FN], [FP, TP]]
+    cost_matrix[:, 0, 0] = 0
+    cost_matrix[:, 0, 1] = 1
+    cost_matrix[:, 1, 0] = 1
+    cost_matrix[:, 1, 1] = 0
+
+    # define amounts
+    amounts = np.ones((n_samples))
+
+    #print(df.dtypes)
+
+    return covariates, labels, amounts, cost_matrix, categorical_variables
+
+def preprocess_kaggle5(): #TODO
+    # read data
+
+    # Drop ID and useless columns
+
+    # Transform binary vars to 1/0
+
+    # Split into covariates, labels
+
+    # Create cost matrix
+
+    # List categorical variables
+
+    # define amounts
+
+    return covariates, labels, amounts, cost_matrix, categorical_variables
+
+def preprocess_kaggle6(): #TODO
+    # read data
+
+    # Drop ID and useless columns
+
+    # Transform binary vars to 1/0
+
+    # Split into covariates, labels
+
+    # Create cost matrix
+
+    # List categorical variables
+
+    # define amounts
+
+    return covariates, labels, amounts, cost_matrix, categorical_variables
+
+def preprocess_kaggle7(): #TODO
+    # read data
+
+    # Drop ID and useless columns
+
+    # Transform binary vars to 1/0
+
+    # Split into covariates, labels
+
+    # Create cost matrix
+
+    # List categorical variables
+
+    # define amounts
 
     return covariates, labels, amounts, cost_matrix, categorical_variables
 

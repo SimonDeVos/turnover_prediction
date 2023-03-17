@@ -18,7 +18,7 @@ from sklearn.tree import DecisionTreeClassifier
 
 from performance_metrics.performance_metrics import get_performance_metrics, evaluate_experiments
 from preprocessing.preprocessing import preprocess_ibm, handle_missing_data, convert_categorical_variables, standardize, \
-    preprocess_eds
+    preprocess_kaggle1, preprocess_kaggle2, preprocess_kaggle3, preprocess_kaggle4
 from sklearn.model_selection import GridSearchCV
 from lightgbm import LGBMClassifier
 
@@ -117,12 +117,20 @@ class Experiment:
         elif self.datasets['acerta']:
             print('acerta')
             covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_acerta() #TODO: implement function
-        elif self.datasets['babushkin']:
-            print('babushkin')
-            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_babushkin() #TODO: implement function
-        elif self.datasets['eds']:
-            print('eds')
-            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_eds() #TODO: implement function
+        elif self.datasets['kaggle1']:
+            print('kaggle1')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle1()
+        elif self.datasets['kaggle2']:
+            print('kaggle2')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle2()
+        elif self.datasets['kaggle3']:
+            print('kaggle3')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle3()
+        elif self.datasets['kaggle4']:
+            print('kaggle4')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle4()
+
+
         else:
             raise Exception('No dataset specified')
 

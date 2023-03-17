@@ -164,18 +164,19 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         print(tabulate(table_traditional, headers="firstrow", floatfmt=("", ".4f",".4f",".4f",".4f",".4f", ".4f", ".4f", ".4f", ".4f", ".4f")))
         table_evaluation.append(table_traditional)
 
-        # Do tests if enough measurements are available (at least 3)
-        if np.array(all_f1s).shape[1] > 2:
-            friedchisq = friedmanchisquare(*np.transpose(all_f1s))
-            print('\nF1 - Friedman test')
-            print('H0: Model performance follows the same distribution')
-            print('\tChi-square:\t%.4f' % friedchisq[0])
-            print('\tp-value:\t%.4f' % friedchisq[1])
-            if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
-                # Post-hoc Nemenyi Friedman: Rows are blocks, columns are groups
-                nemenyi = posthoc_nemenyi_friedman(np.array(all_f1s).T.astype(dtype=np.float32))
-                print('\nNemenyi post hoc test:')
-                print(nemenyi)
+        if evaluators['stat_hypothesis_testing']:
+            # Do tests if enough measurements are available (at least 3)
+            if np.array(all_f1s).shape[1] > 2:
+                friedchisq = friedmanchisquare(*np.transpose(all_f1s))
+                print('\nF1 - Friedman test')
+                print('H0: Model performance follows the same distribution')
+                print('\tChi-square:\t%.4f' % friedchisq[0])
+                print('\tp-value:\t%.4f' % friedchisq[1])
+                if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    # Post-hoc Nemenyi Friedman: Rows are blocks, columns are groups
+                    nemenyi = posthoc_nemenyi_friedman(np.array(all_f1s).T.astype(dtype=np.float32))
+                    print('\nNemenyi post hoc test:')
+                    print(nemenyi)
 
         print('_________________________________________________________________________')
 
@@ -202,17 +203,18 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         print(tabulate(table_auc, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
         table_evaluation.append(table_auc)
 
-        # Do tests if enough measurements are available (at least 3)
-        if evaluation_matrices['AUC'].shape[1] > 2:
-            friedchisq = friedmanchisquare(*evaluation_matrices['AUC'].T)
-            print('\nAUC - Friedman test')
-            print('H0: Model performance follows the same distribution')
-            print('\tChi-square:\t%.4f' % friedchisq[0])
-            print('\tp-value:\t%.4f' % friedchisq[1])
-            if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
-                nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['AUC'].T.astype(dtype=np.float32))
-                print('\nNemenyi post hoc test:')
-                print(nemenyi)
+        if evaluators['stat_hypothesis_testing']:
+            # Do tests if enough measurements are available (at least 3)
+            if evaluation_matrices['AUC'].shape[1] > 2:
+                friedchisq = friedmanchisquare(*evaluation_matrices['AUC'].T)
+                print('\nAUC - Friedman test')
+                print('H0: Model performance follows the same distribution')
+                print('\tChi-square:\t%.4f' % friedchisq[0])
+                print('\tp-value:\t%.4f' % friedchisq[1])
+                if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['AUC'].T.astype(dtype=np.float32))
+                    print('\nNemenyi post hoc test:')
+                    print(nemenyi)
 
         print('_________________________________________________________________________')
 
@@ -242,7 +244,7 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         table_evaluation.append(table_savings)
 
         #TODO: check from cost sens learning - remainder of Savings module
-
+        #TODO: add  if evaluators['stat_hypothesis_testing']:
 
         print('_________________________________________________________________________')
 
@@ -280,17 +282,18 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         # plt.savefig(str(directory + 'AEC_boxplot' + '.png'), bbox_inches='tight')
         # plt.show()
 
-        # Do tests if enough measurements are available (at least 3)
-        if evaluation_matrices['AEC'].shape[1] > 2:
-            friedchisq = friedmanchisquare(*evaluation_matrices['AEC'].T)
-            print('\nSavings - Friedman test')
-            print('H0: Model performance follows the same distribution')
-            print('\tChi-square:\t%.4f' % friedchisq[0])
-            print('\tp-value:\t%.4f' % friedchisq[1])
-            if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
-                nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['AEC'].T.astype(dtype=np.float32))
-                print('\nNemenyi post hoc test:')
-                print(nemenyi)
+        if evaluators['stat_hypothesis_testing']:
+            # Do tests if enough measurements are available (at least 3)
+            if evaluation_matrices['AEC'].shape[1] > 2:
+                friedchisq = friedmanchisquare(*evaluation_matrices['AEC'].T)
+                print('\nSavings - Friedman test')
+                print('H0: Model performance follows the same distribution')
+                print('\tChi-square:\t%.4f' % friedchisq[0])
+                print('\tp-value:\t%.4f' % friedchisq[1])
+                if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['AEC'].T.astype(dtype=np.float32))
+                    print('\nNemenyi post hoc test:')
+                    print(nemenyi)
 
         print('_________________________________________________________________________')
 
@@ -353,17 +356,18 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         print(tabulate(table_ap, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
         table_evaluation.append(table_ap)
 
-        # Do tests if enough measurements are available (at least 3)
-        if np.array(all_aps).shape[1] > 2:
-            friedchisq = friedmanchisquare(*np.transpose(all_aps))
-            print('\nAP - Friedman test')
-            print('H0: Model performance follows the same distribution')
-            print('\tChi-square:\t%.4f' % friedchisq[0])
-            print('\tp-value:\t%.4f' % friedchisq[1])
-            if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
-                nemenyi = posthoc_nemenyi_friedman(np.array(all_aps).T.astype(dtype=np.float32))
-                print('\nNemenyi post hoc test:')
-                print(nemenyi)
+        if evaluators['stat_hypothesis_testing']:
+            # Do tests if enough measurements are available (at least 3)
+            if np.array(all_aps).shape[1] > 2:
+                friedchisq = friedmanchisquare(*np.transpose(all_aps))
+                print('\nAP - Friedman test')
+                print('H0: Model performance follows the same distribution')
+                print('\tChi-square:\t%.4f' % friedchisq[0])
+                print('\tp-value:\t%.4f' % friedchisq[1])
+                if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    nemenyi = posthoc_nemenyi_friedman(np.array(all_aps).T.astype(dtype=np.float32))
+                    print('\nNemenyi post hoc test:')
+                    print(nemenyi)
 
         print('_________________________________________________________________________')
 
@@ -389,17 +393,18 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         print(tabulate(table_brier, headers="firstrow", floatfmt=("", ".6f", ".6f", ".4f", ".4f")))
         table_evaluation.append(table_brier)
 
-        # Do tests if enough measurements are available (at least 3)
-        if evaluation_matrices['brier'].shape[1] > 2:
-            friedchisq = friedmanchisquare(*evaluation_matrices['brier'].T)
-            print('\nBrier score - Friedman test')
-            print('H0: Model performance follows the same distribution')
-            print('\tChi-square:\t%.4f' % friedchisq[0])
-            print('\tp-value:\t%.4f' % friedchisq[1])
-            if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
-                nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['brier'].T.astype(dtype=np.float32))
-                print('\nNemenyi post hoc test:')
-                print(nemenyi)
+        if evaluators['stat_hypothesis_testing']:
+            # Do tests if enough measurements are available (at least 3)
+            if evaluation_matrices['brier'].shape[1] > 2:
+                friedchisq = friedmanchisquare(*evaluation_matrices['brier'].T)
+                print('\nBrier score - Friedman test')
+                print('H0: Model performance follows the same distribution')
+                print('\tChi-square:\t%.4f' % friedchisq[0])
+                print('\tp-value:\t%.4f' % friedchisq[1])
+                if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['brier'].T.astype(dtype=np.float32))
+                    print('\nNemenyi post hoc test:')
+                    print(nemenyi)
 
         print('_________________________________________________________________________')
 
@@ -426,16 +431,17 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         print(tabulate(table_time, headers="firstrow", floatfmt=("", ".6f", ".6f", ".4f", ".4f")))
         table_evaluation.append(table_time)
 
-        # Do tests if enough measurements are available (at least 3)
-        if evaluation_matrices['time'].shape[1] > 2:
-            friedchisq = friedmanchisquare(*evaluation_matrices['time'].T)
-            print('\nTime - Friedman test')
-            print('H0: Model performance follows the same distribution')
-            print('\tChi-square:\t%.4f' % friedchisq[0])
-            print('\tp-value:\t%.4f' % friedchisq[1])
-            if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
-                nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['time'].T.astype(dtype=np.float32))
-                print('\nNemenyi post hoc test:')
-                print(nemenyi)
+        if evaluators['stat_hypothesis_testing']:
+            # Do tests if enough measurements are available (at least 3)
+            if evaluation_matrices['time'].shape[1] > 2:
+                friedchisq = friedmanchisquare(*evaluation_matrices['time'].T)
+                print('\nTime - Friedman test')
+                print('H0: Model performance follows the same distribution')
+                print('\tChi-square:\t%.4f' % friedchisq[0])
+                print('\tp-value:\t%.4f' % friedchisq[1])
+                if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['time'].T.astype(dtype=np.float32))
+                    print('\nNemenyi post hoc test:')
+                    print(nemenyi)
 
         print('_________________________________________________________________________')

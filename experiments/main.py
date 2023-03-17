@@ -35,37 +35,47 @@ settings = {
 #    'lambda2_options': [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
 #    'neurons_options': [2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10],
 
-    'cat_encoder': 2 #1: one-hot, 2: WOE,
+    'cat_encoder': 1 #1: one-hot, 2: WOE,
 }
 
 datasets = {
     'acerta': False,    # not implemented
-    'babushkin': False, # not implemented
-    'eds': False,    # TODO: no costs specified (currently, misclassified = 1, correct = 0)
+    'cegeka': False,    # not implemented
+    'ds': False,        # not implemented
     'ibm': True,
-    'imec': False   # not implemented
+    'imec': False,      # not implemented
+    'kaggle1': False,    # TODO: no costs specified (currently, misclassified = 1, correct = 0)
+    'kaggle2': False,   # ok
+    'kaggle3': False,   # ok
+    'kaggle4': False,   # ok
+    'kaggle5': False,   # not implemented
+    'kaggle6': False,   # not implemented
+    'kaggle7': False,   # not implemented
+    'medium': False,    # not implemented
+    'rhuebner': False,  # not implemented
+    'techco': False,    # not implemented
 }
 
 methodologies = {
     'ab': True,    # AdaBoost (AB) -                           implemented
     'ann': False,   # Artificial Neural Networks (ANN) - sklearn.neural_network.MLPClassifier
-    'bnb': True,   # Bernoulli Naive Bayes (BNB) -             implemented
-    'cb': True,     # CatBoost (CB) -                          implemented #TODO: takes long to train
-    'dt': True,    # Decision Tree (DT)-                       implemented
-    'gnb': True,   # Gaussian Naive Bayes (GNB)-               implemented
-    'gb': True,    # Gradient Boosting (GB)-                   implemented
-    'knn': True,    # K-Nearest Neighbors (KNN) -              implemented
-    'lgbm': True,   # LightGBM (LGBM) -                        implemented
-    'lda': True,   # Linear Discriminant Analysis (LDA) -      implemented
+    'bnb': False,   # Bernoulli Naive Bayes (BNB) -             implemented
+    'cb': False,     # CatBoost (CB) -                          implemented #TODO: takes long to train
+    'dt': False,    # Decision Tree (DT)-                       implemented
+    'gnb': False,   # Gaussian Naive Bayes (GNB)-               implemented
+    'gb': False,    # Gradient Boosting (GB)-                   implemented
+    'knn': False,    # K-Nearest Neighbors (KNN) -              implemented
+    'lgbm': False,   # LightGBM (LGBM) -                        implemented
+    'lda': False,   # Linear Discriminant Analysis (LDA) -      implemented
     'lr': True,    # Logistic Regression (LR) -                implemented
-    'mnb': True,   # Multinomial Naive Bayes (MNB) -           implemented
-    'pac': True,   # Passive Aggressive Classifier (PAC) -     implemented
+    'mnb': False,   # Multinomial Naive Bayes (MNB) -           implemented
+    'pac': False,   # Passive Aggressive Classifier (PAC) -     implemented
 #    'per': True,   # Perceptron (Per) -                        implemented
-    'qda': True,   # Quadratic Discriminant Analysis (QDA) -   implemented #TODO: might give "UserWarning: Variables are collinear"
-    'rf': True,    # Random Forest (RF) -                      implemented
-    'rc': True,    # Ridge Classifier (RC) -                   implemented
-    'sgd': True,   # Stochastic Gradient Descent (SGD) -       implemented
-    'svm': True,   # Support Vector Machine (SVM) -             implemented
+    'qda': False,   # Quadratic Discriminant Analysis (QDA) -   implemented #TODO: might give "UserWarning: Variables are collinear"
+    'rf': False,    # Random Forest (RF) -                      implemented
+    'rc': False,    # Ridge Classifier (RC) -                   implemented
+    'sgd': False,   # Stochastic Gradient Descent (SGD) -       implemented
+    'svm': False,   # Support Vector Machine (SVM) -             implemented
     'xgb': True    # Extreme Gradient Boosting (XGBoost) -     implemented
 }
 
@@ -97,7 +107,9 @@ evaluators = {
     'rankings': False,  #not implemented
 
     # Other
-    'time': True
+    'time': True,
+
+    'stat_hypothesis_testing': False #Perform tests on H0: Model performance follows the same distribution
 }
 
 hyperparameters = {

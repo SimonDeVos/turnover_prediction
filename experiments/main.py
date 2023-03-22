@@ -35,35 +35,36 @@ settings = {
 #    'lambda2_options': [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
 #    'neurons_options': [2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10],
 
-    'cat_encoder': 1 #1: one-hot, 2: WOE,
+    'cat_encoder': 2, #1: one-hot, 2: WOE,
+    'scaler': 1 #1: standardscaler, 2: minmax scaler, 3... #TODO
 }
 
 datasets = {
     'acerta': False,    # not implemented
     'cegeka': False,    # not implemented
-    'ds': False,        # not implemented
-    'ibm': True,
+    'ds': False,        # ok
+    'ibm': False,
     'imec': False,      # not implemented
-    'kaggle1': False,    # TODO: no costs specified (currently, misclassified = 1, correct = 0)
+    'kaggle1': False,    # ok
     'kaggle2': False,   # ok
     'kaggle3': False,   # ok
     'kaggle4': False,   # ok
-    'kaggle5': False,   # not implemented
-    'kaggle6': False,   # not implemented
-    'kaggle7': False,   # not implemented
-    'medium': False,    # not implemented
-    'rhuebner': False,  # not implemented
-    'techco': False,    # not implemented
+    'kaggle5': False,   # ok
+    'kaggle6': False,   # ok --> to be deleted (perfect predictions, data leakage in features)
+    'kaggle7': False,   # ok
+    'medium': False,    # ok
+    'rhuebner': False,  # ok (same as kaggle5, but more extensive)
+    'techco': True,    # ok
 }
 
 methodologies = {
-    'ab': True,    # AdaBoost (AB) -                           implemented
-    'ann': False,   # Artificial Neural Networks (ANN) - sklearn.neural_network.MLPClassifier
+    'ab': False,    # AdaBoost (AB) -                           implemented
+    'ann': False,   # Artificial Neural Networks (ANN) - sklearn.neural_network.MLPClassifier #Todo
     'bnb': False,   # Bernoulli Naive Bayes (BNB) -             implemented
     'cb': False,     # CatBoost (CB) -                          implemented #TODO: takes long to train
-    'dt': False,    # Decision Tree (DT)-                       implemented
+    'dt': True,    # Decision Tree (DT)-                       implemented
     'gnb': False,   # Gaussian Naive Bayes (GNB)-               implemented
-    'gb': False,    # Gradient Boosting (GB)-                   implemented
+    'gb': True,    # Gradient Boosting (GB)-                   implemented
     'knn': False,    # K-Nearest Neighbors (KNN) -              implemented
     'lgbm': False,   # LightGBM (LGBM) -                        implemented
     'lda': False,   # Linear Discriminant Analysis (LDA) -      implemented
@@ -72,7 +73,7 @@ methodologies = {
     'pac': False,   # Passive Aggressive Classifier (PAC) -     implemented
 #    'per': True,   # Perceptron (Per) -                        implemented
     'qda': False,   # Quadratic Discriminant Analysis (QDA) -   implemented #TODO: might give "UserWarning: Variables are collinear"
-    'rf': False,    # Random Forest (RF) -                      implemented
+    'rf': True,    # Random Forest (RF) -                      implemented
     'rc': False,    # Ridge Classifier (RC) -                   implemented
     'sgd': False,   # Stochastic Gradient Descent (SGD) -       implemented
     'svm': False,   # Support Vector Machine (SVM) -             implemented
@@ -90,8 +91,8 @@ thresholding = {
 
 evaluators = {
     # Cost-insensitive
-    'traditional': True,
-    'ROC': False,           #not implemented
+    'traditional': True,    # acc, F1, prec, recall
+    'ROC': False,           # not implemented
     'AUC': True,
     'PR': True,
     'H_measure': False,     #not implemented

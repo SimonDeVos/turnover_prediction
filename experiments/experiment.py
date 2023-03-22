@@ -18,7 +18,9 @@ from sklearn.tree import DecisionTreeClassifier
 
 from performance_metrics.performance_metrics import get_performance_metrics, evaluate_experiments
 from preprocessing.preprocessing import preprocess_ibm, handle_missing_data, convert_categorical_variables, standardize, \
-    preprocess_kaggle1, preprocess_kaggle2, preprocess_kaggle3, preprocess_kaggle4
+    preprocess_kaggle1, preprocess_kaggle2, preprocess_kaggle3, preprocess_kaggle4, preprocess_kaggle5, \
+    preprocess_kaggle6, preprocess_kaggle7, preprocess_acerta, preprocess_ds, preprocess_medium, preprocess_rhuebner, \
+    preprocess_techco
 from sklearn.model_selection import GridSearchCV
 from lightgbm import LGBMClassifier
 
@@ -117,6 +119,9 @@ class Experiment:
         elif self.datasets['acerta']:
             print('acerta')
             covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_acerta() #TODO: implement function
+        elif self.datasets['ds']:
+            print('data scientists dataset')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_ds() #TODO: implement function
         elif self.datasets['kaggle1']:
             print('kaggle1')
             covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle1()
@@ -129,8 +134,27 @@ class Experiment:
         elif self.datasets['kaggle4']:
             print('kaggle4')
             covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle4()
-
-
+        elif self.datasets['kaggle5']:
+            print('kaggle5')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle5()
+        elif self.datasets['kaggle6']:
+            print('kaggle6')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle6()
+        elif self.datasets['kaggle7']:
+            print('kaggle7')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle7()
+#        elif self.datasets['kaggle8']:
+#            print('kaggle8')
+#            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle8()
+        elif self.datasets['medium']:
+            print('medium dataset')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_medium()
+        elif self.datasets['rhuebner']:
+            print('rhuebner dataset')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_rhuebner()
+        elif self.datasets['techco']:
+            print('techco dataset')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_techco()
         else:
             raise Exception('No dataset specified')
 

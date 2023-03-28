@@ -3,6 +3,8 @@
 import numpy as np
 import pandas as pd
 import random
+
+from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.manifold import TSNE
@@ -11,6 +13,8 @@ import seaborn as sns
 import category_encoders as ce
 from category_encoders import woe
 import time
+
+from imblearn.over_sampling import SMOTE, RandomOverSampler, ADASYN
 
 import warnings
 
@@ -154,6 +158,14 @@ def handle_missing_data(df_train, df_val, df_test, categorical_variables):
     assert df_train.isna().sum().sum() == 0 and df_val.isna().sum().sum() == 0 and df_test.isna().sum().sum() == 0
 
     return df_train, df_val, df_test, categorical_variables
+
+
+def add_prefix_to_hyperparams(param_dict, prefix):  # This is necessary for the make_pipeline() method --> e.g., 'adaboostclassifier__n_estimators': [50, 100, 200],
+    new_param_dict = {}
+    for key, value in param_dict.items():
+        new_param_dict[f'{prefix}{key}'] = value
+    return new_param_dict
+
 
 
 """DATASET-SPECIFIC PREPROCESSING FUNCTIONS"""

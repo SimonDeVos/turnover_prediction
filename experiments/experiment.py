@@ -2,6 +2,7 @@
 #TODO add imports and organize them properly
 import numpy as np
 import pandas as pd
+from imblearn.over_sampling import SMOTE, RandomOverSampler, ADASYN
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier, AdaBoostClassifier
 from sklearn.linear_model import LogisticRegression, PassiveAggressiveClassifier, Perceptron, RidgeClassifier, \
@@ -20,9 +21,11 @@ from performance_metrics.performance_metrics import get_performance_metrics, eva
 from preprocessing.preprocessing import preprocess_ibm, handle_missing_data, convert_categorical_variables, standardize, \
     preprocess_kaggle1, preprocess_kaggle2, preprocess_kaggle3, preprocess_kaggle4, preprocess_kaggle5, \
     preprocess_kaggle6, preprocess_kaggle7, preprocess_acerta, preprocess_ds, preprocess_medium, preprocess_rhuebner, \
-    preprocess_techco
+    preprocess_techco, add_prefix_to_hyperparams
 from sklearn.model_selection import GridSearchCV
 from lightgbm import LGBMClassifier
+
+from imblearn.pipeline import Pipeline, make_pipeline
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -60,7 +63,13 @@ define class
                         ...
                         lr
                             initialize model
+                                hyperpara tuning through CV
+                                    per Cross-fold: oversample training set
+                                    tune one validation set
+                                    return best hyperparas                               
                             train model
+                                oversample train_val set
+                                use best hyperparas
                             evaluate: 'evaluate_model(proba_val,proba,i,index,info)'
                         ...
     def evaluate
@@ -219,6 +228,7 @@ class Experiment:
             x_train_val = np.concatenate((x_train, x_val))
             y_train_val = np.concatenate((y_train, y_val))
 
+
             """Assign thresholds for the different strategies:"""
             #   Instance-dependent cost-sensitive threshold
             if self.thresholding['t_idcs']:
@@ -274,17 +284,59 @@ class Experiment:
                 increase index counter
             """
 
+            def create_pipeline_and_param_grid(self, param_grid, prefix: str, method):
+                if self.settings['oversampling'] == 0:
+                    pipeline = method
+                else:
+                    oversampler = {
+                        1: SMOTE(random_state=0),
+                        2: RandomOverSampler(random_state=0),
+                        3: ADASYN(random_state=0)
+                    }[self.settings['oversampling']]
+                    pipeline = make_pipeline(oversampler, method)
+                    param_grid = add_prefix_to_hyperparams(param_grid, prefix)
+                return pipeline, param_grid
+
             # AdaBoost
             if self.methodologies['ab']:
-                model = AdaBoostClassifier()
                 param_grid = self.hyperparameters['ab']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                method = AdaBoostClassifier()
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, 'adaboostclassifier__', method)
+
+                #if self.settings['oversampling'] == 0:
+                #    pipeline = AdaBoostClassifier()
+                #else:
+                #    oversampler = {
+                #        1: SMOTE,
+                #        2: RandomOverSampler,
+                #        3: ADASYN
+                #    }[self.settings['oversampling']]
+                #    pipeline = make_pipeline(oversampler(random_state=0), AdaBoostClassifier())
+                #    param_grid = add_prefix_to_hyperparams(param_grid, 'adaboostclassifier')
+
+                #if self.settings['oversampling'] == 0:
+                #    pipeline = AdaBoostClassifier()
+                #if self.settings['oversampling'] == 1:
+                #    # Create a pipeline with SMOTE and AdaBoostClassifier
+                #    pipeline = make_pipeline(SMOTE(random_state=0), AdaBoostClassifier())
+                #    param_grid = add_prefix_to_hyperparams(param_grid, 'adaboostclassifier')
+                #if self.settings['oversampling'] == 2:
+                #    pipeline = make_pipeline(RandomOverSampler(random_state=0), AdaBoostClassifier())
+                #    param_grid = add_prefix_to_hyperparams(param_grid, 'adaboostclassifier')
+                #if self.settings['oversampling'] == 3:
+                #    pipeline = make_pipeline(ADASYN(random_state=0), AdaBoostClassifier())
+                #    param_grid = add_prefix_to_hyperparams(param_grid, 'adaboostclassifier')
+
+                # Create a GridSearchCV object
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
-                gs.fit(x_train_val, y_train_val)
+
+                gs.fit(x_train_val, y_train_val)    #oversampling is included in pipeline object, which is included in the gs object
                 end = time.perf_counter()
 
                 print('\tab - best hyperparameters:', gs.best_params_)
+
 
                 proba_test = gs.predict_proba(x_test)[:, 1]
                 proba_val = gs.predict_proba(x_val)[:, 1]
@@ -299,9 +351,11 @@ class Experiment:
 
             # Bernoulli Naive Bayes
             if self.methodologies['bnb']:
-                model = BernoulliNB()
                 param_grid = self.hyperparameters['bnb']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                method = BernoulliNB()
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "bernoullinb__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -320,9 +374,12 @@ class Experiment:
 
             # CatBoost
             if self.methodologies['cb']:
-                model = CatBoostClassifier(silent=True)
+                method = CatBoostClassifier(silent=True)
                 param_grid = self.hyperparameters['cb']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "catboostclassifier__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -341,9 +398,12 @@ class Experiment:
 
             # Decision Tree
             if self.methodologies['dt']:
-                model = DecisionTreeClassifier()
+                method = DecisionTreeClassifier()
                 param_grid = self.hyperparameters['dt']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "decisiontreeclassifier__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -362,9 +422,12 @@ class Experiment:
 
             # Gaussian Naive Bayes
             if self.methodologies['gnb']:
-                model = GaussianNB()
+                method = GaussianNB()
                 param_grid = self.hyperparameters['gnb']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "gaussiannb__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -383,9 +446,11 @@ class Experiment:
 
             # Gradient Goosting
             if self.methodologies['gb']:
-                model = GradientBoostingClassifier()
+                method = GradientBoostingClassifier()
                 param_grid = self.hyperparameters['gb']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "gradientboostingclassifier__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -404,10 +469,11 @@ class Experiment:
 
             # K-Nearest Neighbors
             if self.methodologies['knn']:
-
-                model = KNeighborsClassifier()
+                method = KNeighborsClassifier()
                 param_grid = self.hyperparameters['knn']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "kneighborsclassifier__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -426,9 +492,11 @@ class Experiment:
 
             # LightGBM
             if self.methodologies['lgbm']:
-                model = LGBMClassifier(random_state=42)
+                method = LGBMClassifier(random_state=42)
                 param_grid = self.hyperparameters['lgbm']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "lgbmclassifier__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -447,9 +515,11 @@ class Experiment:
 
             # Linear Discriminant Analysis
             if self.methodologies['lda']:
-                model = LinearDiscriminantAnalysis()
+                method = LinearDiscriminantAnalysis()
                 param_grid = self.hyperparameters['lda']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "lineardiscriminantanalysis__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -468,10 +538,11 @@ class Experiment:
 
             # Logistic regression
             if self.methodologies['lr']:
-                lr = LogisticRegression()
+                method = LogisticRegression()
                 param_grid = self.hyperparameters['lr']
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "logisticregression__", method)
 
-                gs_lr = GridSearchCV(lr, param_grid=param_grid, scoring='accuracy', cv=5)
+                gs_lr = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 # Fitting the grid search object to the train_val data
                 start = time.perf_counter()
@@ -491,9 +562,11 @@ class Experiment:
 
             # Multinomial Naive Bayes
             if self.methodologies['mnb']:
-                model = MultinomialNB()
+                method = MultinomialNB()
                 param_grid = self.hyperparameters['mnb']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "multinomialnb__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 #TODO: mnb can only handle non-negative input data
                 #extra preprocessing step:
@@ -519,9 +592,11 @@ class Experiment:
 
             # Passive Aggressive Classifier
             if self.methodologies['pac']:
-                model = PassiveAggressiveClassifier()
+                method = PassiveAggressiveClassifier()
                 param_grid = self.hyperparameters['pac']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "passiveaggressiveclassifier__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -563,9 +638,11 @@ class Experiment:
 
             # Quadratic Discriminant Analysis
             if self.methodologies['qda']:
-                model = QuadraticDiscriminantAnalysis()
+                method = QuadraticDiscriminantAnalysis()
                 param_grid = self.hyperparameters['qda']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "quadraticdiscriminantanalysis__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -584,9 +661,11 @@ class Experiment:
 
             # Random Forest
             if self.methodologies['rf']:
-                model = RandomForestClassifier()
+                method = RandomForestClassifier()
                 param_grid = self.hyperparameters['rf']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "randomforestclassifier__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -605,9 +684,11 @@ class Experiment:
 
             # Ridge Classifier
             if self.methodologies['rc']:
-                model = RidgeClassifier()
+                method = RidgeClassifier()
                 param_grid = self.hyperparameters['rc']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "ridgeclassifier__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -626,9 +707,11 @@ class Experiment:
 
             # Stochastic Gradient Descent
             if self.methodologies['sgd']:
-                model = SGDClassifier()
+                method = SGDClassifier()
                 param_grid = self.hyperparameters['sgd']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "sgdclassifier__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -647,9 +730,11 @@ class Experiment:
 
             # Support Vector Machine
             if self.methodologies['svm']:
-                model = SVC()
+                method = SVC()
                 param_grid = self.hyperparameters['svm']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "svc__", method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -668,11 +753,11 @@ class Experiment:
 
             #XGBoosting
             if self.methodologies['xgb']:
-                xgb = xgboost.XGBClassifier()
-
+                method = xgboost.XGBClassifier()
                 param_grid = self.hyperparameters['xgb']
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "xgbclassifier__", method)
 
-                gs_xgb = GridSearchCV(xgb, param_grid=param_grid, scoring='accuracy', cv=5)
+                gs_xgb = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 # Fitting the grid search object to the train_val data
                 start = time.perf_counter()

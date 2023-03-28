@@ -26,17 +26,21 @@ evaluators
 
 settings = {
 #    'class_costs': False,
-    'folds': 3,
-    'repeats': 2,
-    'val_ratio': 0.25,  # Relative to training set only (excluding test set)
+    'folds': 2,
+    'repeats': 1,
+    'val_ratio': 0.25,  # Relative to training set only (excluding test set) #TODO: outdated (now implemented as nr of folds in CV)
 #    'l1_regularization': False,
 #    'lambda1_options': [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
 #    'l2_regularization': False,
 #    'lambda2_options': [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
 #    'neurons_options': [2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10],
 
-    'cat_encoder': 2, #1: one-hot, 2: WOE,
-    'scaler': 1 #1: standardscaler, 2: minmax scaler, 3... #TODO
+#TODO: print these settings in output as well
+    'cat_encoder': 2,   #1: one-hot, 2: WOE,
+    'scaler': 1,        #1: standardscaler, 2: minmax scaler, 3... #TODO: add more?
+    'CV_hyperpara_tuning': 5,  # The nr of CV for hyperpara tuning (splits train_val into train and val)
+    'oversampling': 1   #0: none, 1: SMOTE, 2: RandomOversampler, 3: ADASYN
+
 }
 
 datasets = {
@@ -49,12 +53,12 @@ datasets = {
     'kaggle2': False,   # ok
     'kaggle3': False,   # ok
     'kaggle4': False,   # ok
-    'kaggle5': False,   # ok
+    'kaggle5': True,   # ok
     'kaggle6': False,   # ok --> to be deleted (perfect predictions, data leakage in features)
     'kaggle7': False,   # ok
     'medium': False,    # ok
     'rhuebner': False,  # ok (same as kaggle5, but more extensive)
-    'techco': True,    # ok
+    'techco': False,    # ok
 }
 
 methodologies = {
@@ -63,20 +67,20 @@ methodologies = {
     'bnb': False,   # Bernoulli Naive Bayes (BNB) -             implemented
     'cb': False,     # CatBoost (CB) -                          implemented #TODO: takes long to train
     'dt': True,    # Decision Tree (DT)-                       implemented
-    'gnb': False,   # Gaussian Naive Bayes (GNB)-               implemented
-    'gb': True,    # Gradient Boosting (GB)-                   implemented
+    'gnb': True,   # Gaussian Naive Bayes (GNB)-               implemented
+    'gb': False,    # Gradient Boosting (GB)-                   implemented
     'knn': False,    # K-Nearest Neighbors (KNN) -              implemented
     'lgbm': False,   # LightGBM (LGBM) -                        implemented
     'lda': False,   # Linear Discriminant Analysis (LDA) -      implemented
-    'lr': True,    # Logistic Regression (LR) -                implemented
+    'lr': False,    # Logistic Regression (LR) -                implemented
     'mnb': False,   # Multinomial Naive Bayes (MNB) -           implemented
-    'pac': False,   # Passive Aggressive Classifier (PAC) -     implemented
+    'pac': True,   # Passive Aggressive Classifier (PAC) -     implemented
 #    'per': True,   # Perceptron (Per) -                        implemented
-    'qda': False,   # Quadratic Discriminant Analysis (QDA) -   implemented #TODO: might give "UserWarning: Variables are collinear"
+    'qda': True,   # Quadratic Discriminant Analysis (QDA) -   implemented #TODO: might give "UserWarning: Variables are collinear"
     'rf': True,    # Random Forest (RF) -                      implemented
-    'rc': False,    # Ridge Classifier (RC) -                   implemented
-    'sgd': False,   # Stochastic Gradient Descent (SGD) -       implemented
-    'svm': False,   # Support Vector Machine (SVM) -             implemented
+    'rc': True,    # Ridge Classifier (RC) -                   implemented
+    'sgd': True,   # Stochastic Gradient Descent (SGD) -       implemented
+    'svm': True,   # Support Vector Machine (SVM) -             implemented
     'xgb': True    # Extreme Gradient Boosting (XGBoost) -     implemented
 }
 
@@ -115,19 +119,23 @@ evaluators = {
 
 hyperparameters = {
     'ab': {
-        'n_estimators': [50],   # [50, 100, 200],
+
+        #'adaboostclassifier__n_estimators': [50, 100, 200],
+        #'adaboostclassifier__learning_rate': [0.01, 0.1, 1.0],
+        #'adaboostclassifier__algorithm': ['SAMME', 'SAMME.R']
+        'n_estimators': [50, 100, 200],   # [50, 100, 200],
         'learning_rate': [1],   # [0.1, 0.5, 1],
         'algorithm': ['SAMME']  # ['SAMME', 'SAMME.R']
     },
 
     'bnb': {
-        'alpha': [0.1],         # [0.01, 0.1, 1.0],
-        'binarize': [0.0],      # [None, 0.0, 0.5, 1.0],
-        'fit_prior': [True]     # [True, False]
+        'alpha': [0.1, 1.0],         # [0.01, 0.1, 1.0],
+        'binarize': [0.0, 0.5, 1.0],      # [0.0, 0.5, 1.0],
+        'fit_prior': [True, False]     # [True, False]
     },
 
     'cb': {
-        'iterations': [100],            # [100, 200, 300],
+        'iterations': [100, 200, 300],            # [100, 200, 300],
         'depth': [5],                   # [3, 5, 7, 9],
         'learning_rate': [0.05],        # [0.01, 0.05, 0.1],
         'l2_leaf_reg': [3],             # [1, 3, 5, 7],
@@ -150,7 +158,7 @@ hyperparameters = {
         'max_features': ['sqrt']},  # ['sqrt', 'log2']},
 
     'gnb': {
-        'var_smoothing': [1e-5]},   # [1e-9, 1e-8, 1e-7, 1e-6, 1e-5]},
+        'var_smoothing': [1e-9, 1e-8, 1e-7, 1e-6, 1e-5]},   # [1e-9, 1e-8, 1e-7, 1e-6, 1e-5]},
 
     'knn': {
         'n_neighbors': [5],         # [3, 5, 7, 9],

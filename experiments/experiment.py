@@ -117,7 +117,8 @@ class Experiment:
         """
         LOAD AND PREPROCESS DATA
         """
-        global xgb
+#        global xgb #TODO: no idea what this line does, currently commented
+
         print('\n\n************** LOADING DATA **************\n')
 
 
@@ -167,6 +168,11 @@ class Experiment:
         else:
             raise Exception('No dataset specified')
 
+        # print properties of dataset:
+        print('nr of features: '+str(covariates.shape[1]) +' +1')
+        print('nr of observations: ' + str(covariates.shape[0]))
+        imbalance_ratio = (labels == 1).sum() / covariates.shape[0]
+        print(f"The imbalance ratio is {imbalance_ratio:.2f}")
 
         """
         RUN EXPERIMENTS
@@ -604,8 +610,14 @@ class Experiment:
 
                 print('\tpac - best hyperparameters:', gs.best_params_)
 
-                proba_test = gs.decision_function(x_test)
-                proba_val = gs.decision_function(x_val)
+               # proba_test = gs.decision_function(x_test) #Todo: remove line - dec_funct does not output probabilities
+               # proba_val = gs.decision_function(x_val)    #Todo: remove line - dec_funct does not output probabilities
+
+                d_test = gs.decision_function(x_test)
+                proba_test = np.exp(d_test) / (1 + np.exp(d_test))
+
+                d_val = gs.decision_function(x_val)
+                proba_val = np.exp(d_val) / (1 + np.exp(d_val))
 
                 info = {'time': end - start}
 
@@ -696,8 +708,11 @@ class Experiment:
 
                 print('\trc - best hyperparameters:', gs.best_params_)
 
-                proba_test = gs.decision_function(x_test)
-                proba_val = gs.decision_function(x_val)
+                # decision_function outputs scores between -1 and 1. Transform these to [0,1] with softmax
+                d_test = gs.decision_function(x_test)
+                proba_test = np.exp(d_test) / (1 + np.exp(d_test))
+                d_val = gs.decision_function(x_val)
+                proba_val = np.exp(d_val) / (1 + np.exp(d_val))
 
                 info = {'time': end - start}
 
@@ -789,7 +804,8 @@ class Experiment:
             #jfkdlsm
 
         print('\n*** Results ***')
-        print('Thresholding method: '+str(self.thresholding)+'\n')
+        #print('Thresholding method: '+str(self.thresholding)+'\n')
+
         evaluate_experiments(evaluators=self.evaluators,
                              methodologies=self.methodologies,
                              thresholding=self.thresholding,

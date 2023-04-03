@@ -27,7 +27,7 @@ evaluators
 settings = {
 #    'class_costs': False,
     'folds': 2,
-    'repeats': 1,
+    'repeats': 2,
     'val_ratio': 0.25,  # Relative to training set only (excluding test set) #TODO: outdated (now implemented as nr of folds in CV)
 #    'l1_regularization': False,
 #    'lambda1_options': [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
@@ -49,11 +49,11 @@ datasets = {
     'ds': False,        # ok
     'ibm': False,
     'imec': False,      # not implemented
-    'kaggle1': False,    # ok
+    'kaggle1': True,    # ok
     'kaggle2': False,   # ok
     'kaggle3': False,   # ok
     'kaggle4': False,   # ok
-    'kaggle5': True,   # ok
+    'kaggle5': False,   # ok
     'kaggle6': False,   # ok --> to be deleted (perfect predictions, data leakage in features)
     'kaggle7': False,   # ok
     'medium': False,    # ok
@@ -62,25 +62,25 @@ datasets = {
 }
 
 methodologies = {
-    'ab': False,    # AdaBoost (AB) -                           implemented
+    'ab': True,    # AdaBoost (AB) -                           implemented
     'ann': False,   # Artificial Neural Networks (ANN) - sklearn.neural_network.MLPClassifier #Todo
-    'bnb': False,   # Bernoulli Naive Bayes (BNB) -             implemented
+    'bnb': True,   # Bernoulli Naive Bayes (BNB) -             implemented
     'cb': False,     # CatBoost (CB) -                          implemented #TODO: takes long to train
     'dt': True,    # Decision Tree (DT)-                       implemented
-    'gnb': True,   # Gaussian Naive Bayes (GNB)-               implemented
+    'gnb': False,   # Gaussian Naive Bayes (GNB)-               implemented
     'gb': False,    # Gradient Boosting (GB)-                   implemented
-    'knn': False,    # K-Nearest Neighbors (KNN) -              implemented
-    'lgbm': False,   # LightGBM (LGBM) -                        implemented
+    'knn': True,    # K-Nearest Neighbors (KNN) -              implemented
+    'lgbm': True,   # LightGBM (LGBM) -                        implemented
     'lda': False,   # Linear Discriminant Analysis (LDA) -      implemented
     'lr': False,    # Logistic Regression (LR) -                implemented
     'mnb': False,   # Multinomial Naive Bayes (MNB) -           implemented
-    'pac': True,   # Passive Aggressive Classifier (PAC) -     implemented
+    'pac': False,   # Passive Aggressive Classifier (PAC) -     implemented
 #    'per': True,   # Perceptron (Per) -                        implemented
     'qda': True,   # Quadratic Discriminant Analysis (QDA) -   implemented #TODO: might give "UserWarning: Variables are collinear"
     'rf': True,    # Random Forest (RF) -                      implemented
-    'rc': True,    # Ridge Classifier (RC) -                   implemented
+    'rc': False,    # Ridge Classifier (RC) -                   implemented
     'sgd': True,   # Stochastic Gradient Descent (SGD) -       implemented
-    'svm': True,   # Support Vector Machine (SVM) -             implemented
+    'svm': False,   # Support Vector Machine (SVM) -             implemented #TODO: takes long to train
     'xgb': True    # Extreme Gradient Boosting (XGBoost) -     implemented
 }
 
@@ -99,7 +99,7 @@ evaluators = {
     'ROC': False,           # not implemented
     'AUC': True,
     'PR': True,
-    'H_measure': False,     #not implemented
+    'H_measure': True,     #takes into account mix of precision and recall
     'brier': True,
     'recall_overlap': False,        #not implemented
     'recall_correlation': False,    #not implemented
@@ -112,17 +112,16 @@ evaluators = {
     'rankings': False,  #not implemented
 
     # Other
-    'time': True,
+    'time': True, #TODO: there might be a bug in checking significance of time as performance metric
 
-    'stat_hypothesis_testing': False #Perform tests on H0: Model performance follows the same distribution
+    'stat_hypothesis_testing': True #Perform tests on H0: Model performance follows the same distribution
+        #In the context of the Friedman test, the null hypothesis is that there are no significant differences between the groups or treatments. The alternative hypothesis is that at least one group differs significantly from the others.
+        #If the p-value is small (e.g., less than 0.05), it suggests that there is strong evidence against the null hypothesis and that at least one group differs significantly from the others. If the p-value is large (e.g., greater than 0.05), it suggests that there is weak or no evidence against the null hypothesis, and that the differences between the groups may be due to chance.
+        #However, it's important to note that the p-value alone does not tell you which groups differ significantly from the others. To determine this, you would need to perform post-hoc tests, such as the Nemenyi test or Dunn's test, to compare pairs of groups and identify significant differences. These tests can also adjust for multiple comparisons, which is important when comparing multiple groups.
 }
 
 hyperparameters = {
     'ab': {
-
-        #'adaboostclassifier__n_estimators': [50, 100, 200],
-        #'adaboostclassifier__learning_rate': [0.01, 0.1, 1.0],
-        #'adaboostclassifier__algorithm': ['SAMME', 'SAMME.R']
         'n_estimators': [50, 100, 200],   # [50, 100, 200],
         'learning_rate': [1],   # [0.1, 0.5, 1],
         'algorithm': ['SAMME']  # ['SAMME', 'SAMME.R']
@@ -256,8 +255,10 @@ if __name__ == '__main__':
     now = datetime.datetime.now()
     date_time = now.strftime("%Y-%m-%d_%H-%M-%S")
 
+    directory = str(DIR + '\summary_' + date_time + '.txt')
+
     # Create txt file for summary of results
-    with open(str(DIR + '\summary_' + date_time + '.txt'), 'w') as file:
+    with open(directory, 'w') as file:
         file.write(str(datetime.datetime.now().strftime('Experiment done at:  %d-%m-%y  |  %H:%M') + '\n'))
         file.write('\nSettings: ')
         file.write(json.dumps(settings, indent=3))
@@ -267,9 +268,17 @@ if __name__ == '__main__':
         file.write(json.dumps(methodologies, indent=3))
         file.write('\nEvaluators: ')
         file.write(json.dumps(evaluators, indent=3))
-        file.write('\nHyperparameters: ')   #TODO: only write hyperparameters of methods that are set to True
-        file.write(json.dumps(hyperparameters, indent=3))
+        file.write('\nHyperparameters: ')
+
+        # hyperara_dict: only contains hyperparameters for the methods that are set to True
+        hyperpara_dict = {}
+        for key, value in methodologies.items():
+            if value:  # if the value is True
+                if key in hyperparameters:  # if the key exists in the nested dictionary
+                    hyperpara_dict[key] = hyperparameters[key]
+        file.write(json.dumps(hyperpara_dict, indent=3))
+        #file.write(json.dumps(hyperparameters, indent=3)) #Todo: line can be removed (rendundant with code above)
 
         file.write('\n\n_____________________________________________________________________\n\n')
 
-    experiment.evaluate(directory=DIR)
+    experiment.evaluate(directory=directory)

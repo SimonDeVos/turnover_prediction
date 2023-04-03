@@ -1,9 +1,12 @@
 #TODO: imports
+import warnings
+
 import numpy as np
 from sklearn import metrics
 from tabulate import tabulate
 from scipy.stats import spearmanr, combine_pvalues, friedmanchisquare
 from scikit_posthocs import posthoc_nemenyi_friedman
+from hmeasure import h_score
 
 def savings(cost_matrix, labels, predictions):
     cost_without = cost_without_algorithm(cost_matrix, labels)
@@ -29,6 +32,21 @@ def cost_without_algorithm(cost_matrix, labels):
     cost_pos = cost_matrix[:, 1, 0][labels == 0].sum() + cost_matrix[:, 1, 1][labels == 1].sum()
 
     return min(cost_neg, cost_pos)
+
+def round_nested_list(nested_list): #Used for printing results to .txt file
+    """
+    :param nested_list:
+    :return: list where floats have max 4 decimals
+    """
+    rounded_list = []
+    for elem in nested_list:
+        if isinstance(elem, float):
+            rounded_list.append(round(elem, 4))
+        elif isinstance(elem, list):
+            rounded_list.append(round_nested_list(elem))
+        else:
+            rounded_list.append(elem)
+    return rounded_list
 
 
 def get_performance_metrics(evaluators, evaluation_matrices, i, index, cost_matrix, labels, probabilities, predictions, info):
@@ -90,6 +108,11 @@ def get_performance_metrics(evaluators, evaluation_matrices, i, index, cost_matr
         ap = metrics.average_precision_score(y_true=labels, y_score=probabilities)
 
         evaluation_matrices['PR'][index, i] = np.array([precision, recall, ap], dtype=object)
+
+    if evaluators['H_measure']:
+        h_measure = h_score(labels, predictions)
+        evaluation_matrices['H_measure'][index, i] = h_measure
+
 
     if evaluators['brier']:
 
@@ -165,18 +188,24 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         table_evaluation.append(table_traditional)
 
         if evaluators['stat_hypothesis_testing']:
+            if n_methodologies < 2:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough methods are compare. At least 2 are needed')
+
             # Do tests if enough measurements are available (at least 3)
             if np.array(all_f1s).shape[1] > 2:
                 friedchisq = friedmanchisquare(*np.transpose(all_f1s))
                 print('\nF1 - Friedman test')
-                print('H0: Model performance follows the same distribution')
+                print('H0: There are no significant differences between the models')
                 print('\tChi-square:\t%.4f' % friedchisq[0])
                 print('\tp-value:\t%.4f' % friedchisq[1])
                 if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    print('\t\t'+str(round(friedchisq[1],4)) +" < 0.05: at least one model differs significantly from the others")
                     # Post-hoc Nemenyi Friedman: Rows are blocks, columns are groups
                     nemenyi = posthoc_nemenyi_friedman(np.array(all_f1s).T.astype(dtype=np.float32))
                     print('\nNemenyi post hoc test:')
                     print(nemenyi)
+            elif np.array(all_f1s).shape[1] < 3:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough measurements. At least 3 are needed')
 
         print('_________________________________________________________________________')
 
@@ -204,17 +233,24 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         table_evaluation.append(table_auc)
 
         if evaluators['stat_hypothesis_testing']:
+            if n_methodologies < 2:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough methods are compare. At least 2 are needed')
+
             # Do tests if enough measurements are available (at least 3)
             if evaluation_matrices['AUC'].shape[1] > 2:
                 friedchisq = friedmanchisquare(*evaluation_matrices['AUC'].T)
                 print('\nAUC - Friedman test')
-                print('H0: Model performance follows the same distribution')
+                print('H0: There are no significant differences between the models')
                 print('\tChi-square:\t%.4f' % friedchisq[0])
                 print('\tp-value:\t%.4f' % friedchisq[1])
                 if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    print('\t\t'+str(round(friedchisq[1],4)) +" < 0.05: at least one model differs significantly from the others")
                     nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['AUC'].T.astype(dtype=np.float32))
                     print('\nNemenyi post hoc test:')
                     print(nemenyi)
+
+            elif evaluation_matrices['AUC'].shape[1] < 3:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough measurements. At least 3 are needed')
 
         print('_________________________________________________________________________')
 
@@ -283,17 +319,24 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         # plt.show()
 
         if evaluators['stat_hypothesis_testing']:
+            if n_methodologies < 2:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough methods are compare. At least 2 are needed')
+
             # Do tests if enough measurements are available (at least 3)
             if evaluation_matrices['AEC'].shape[1] > 2:
                 friedchisq = friedmanchisquare(*evaluation_matrices['AEC'].T)
                 print('\nSavings - Friedman test')
-                print('H0: Model performance follows the same distribution')
+                print('H0: There are no significant differences between the models')
                 print('\tChi-square:\t%.4f' % friedchisq[0])
                 print('\tp-value:\t%.4f' % friedchisq[1])
                 if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    print('\t\t'+str(round(friedchisq[1],4)) +" < 0.05: at least one model differs significantly from the others")
                     nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['AEC'].T.astype(dtype=np.float32))
                     print('\nNemenyi post hoc test:')
                     print(nemenyi)
+
+            elif evaluation_matrices['AEC'].shape[1] < 3:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough measurements. At least 3 are needed')
 
         print('_________________________________________________________________________')
 
@@ -357,19 +400,68 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         table_evaluation.append(table_ap)
 
         if evaluators['stat_hypothesis_testing']:
+            if n_methodologies < 2:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough methods are compare. At least 2 are needed')
+
             # Do tests if enough measurements are available (at least 3)
             if np.array(all_aps).shape[1] > 2:
                 friedchisq = friedmanchisquare(*np.transpose(all_aps))
                 print('\nAP - Friedman test')
-                print('H0: Model performance follows the same distribution')
+                print('H0: There are no significant differences between the models')
                 print('\tChi-square:\t%.4f' % friedchisq[0])
                 print('\tp-value:\t%.4f' % friedchisq[1])
                 if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    print('\t\t'+str(round(friedchisq[1],4)) +" < 0.05: at least one model differs significantly from the others")
                     nemenyi = posthoc_nemenyi_friedman(np.array(all_aps).T.astype(dtype=np.float32))
                     print('\nNemenyi post hoc test:')
                     print(nemenyi)
+            elif np.array(all_aps).shape[1]  < 3:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough measurements. At least 3 are needed')
+        print('_________________________________________________________________________')
+
+    if evaluators['H_measure']:
+
+        table_H = [['Method', 'H_measure', 'sd', 'AR', 'sd']]
+        # Compute rankings (- as higher is better)
+        ranked_args = (-evaluation_matrices['H_measure']).argsort(axis=0)
+        rankings = np.arange(len(ranked_args))[ranked_args.argsort(axis=0)]
+        rankings = rankings + 1
+        avg_rankings = rankings.mean(axis=1)
+        sd_rankings = np.sqrt(rankings.var(axis=1))
+
+        # Summarize per method
+        index = 0
+        for item, value in methodologies.items():
+            if value:
+                table_H.append([item, evaluation_matrices['H_measure'][index, :].mean(),
+                                np.sqrt(evaluation_matrices['H_measure'][index, :].var()), avg_rankings[index],
+                                sd_rankings[index]])
+                index += 1
+
+        print(tabulate(table_H, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
+        table_evaluation.append(table_H)
+
+        if evaluators['stat_hypothesis_testing']:
+            if n_methodologies < 2:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough methods are compare. At least 2 are needed')
+
+            # Do tests if enough measurements are available (at least 3)
+            if evaluation_matrices['H_measure'].shape[1] > 2:
+                friedchisq = friedmanchisquare(*evaluation_matrices['H_measure'].T)
+                print('\nH_measure score - Friedman test')
+                print('H0: There are no significant differences between the models')
+                print('\tChi-square:\t%.4f' % friedchisq[0])
+                print('\tp-value:\t%.4f' % friedchisq[1])
+                if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    print('\t\t'+str(round(friedchisq[1],4)) +" < 0.05: at least one model differs significantly from the others")
+                    nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['H_measure'].T.astype(dtype=np.float32))
+                    print('\nNemenyi post hoc test:')
+                    print(nemenyi)
+            elif evaluation_matrices['H_measure'].shape[1] < 3:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough measurements. At least 3 are needed')
 
         print('_________________________________________________________________________')
+
 
     if evaluators['brier']:
         table_brier = [['Method', 'Brier score', 'sd', 'AR', 'sd']]
@@ -394,18 +486,23 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         table_evaluation.append(table_brier)
 
         if evaluators['stat_hypothesis_testing']:
+            if n_methodologies < 2:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough methods are compare. At least 2 are needed')
+
             # Do tests if enough measurements are available (at least 3)
             if evaluation_matrices['brier'].shape[1] > 2:
                 friedchisq = friedmanchisquare(*evaluation_matrices['brier'].T)
                 print('\nBrier score - Friedman test')
-                print('H0: Model performance follows the same distribution')
+                print('H0: There are no significant differences between the models')
                 print('\tChi-square:\t%.4f' % friedchisq[0])
                 print('\tp-value:\t%.4f' % friedchisq[1])
                 if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    print('\t\t'+str(round(friedchisq[1],4)) +" < 0.05: at least one model differs significantly from the others")
                     nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['brier'].T.astype(dtype=np.float32))
                     print('\nNemenyi post hoc test:')
                     print(nemenyi)
-
+            elif evaluation_matrices['brier'].shape[1] < 3:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough measurements. At least 3 are needed')
         print('_________________________________________________________________________')
 
     if evaluators['time']:
@@ -432,16 +529,32 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         table_evaluation.append(table_time)
 
         if evaluators['stat_hypothesis_testing']:
+            if n_methodologies < 2:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough methods are compare. At least 2 are needed')
+
             # Do tests if enough measurements are available (at least 3)
             if evaluation_matrices['time'].shape[1] > 2:
                 friedchisq = friedmanchisquare(*evaluation_matrices['time'].T)
                 print('\nTime - Friedman test')
-                print('H0: Model performance follows the same distribution')
+                print('H0: There are no significant differences between the models')
                 print('\tChi-square:\t%.4f' % friedchisq[0])
                 print('\tp-value:\t%.4f' % friedchisq[1])
                 if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
+                    print('\t\t'+str(round(friedchisq[1],4)) +" < 0.05: at least one model differs significantly from the others")
                     nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['time'].T.astype(dtype=np.float32))
                     print('\nNemenyi post hoc test:')
                     print(nemenyi)
-
+            elif evaluation_matrices['time'].shape[1] < 3:
+                raise Warning('"stat_hypothesis_testing" is True, but not enough measurements. At least 3 are needed')
         print('_________________________________________________________________________')
+
+
+    table_evaluation_rounded = round_nested_list(table_evaluation) #Floats have max 4 decimals for readibility.
+
+    #Add ('a': append) results of evaluators to the summary file
+    with open(directory, 'a') as file:
+        #wite table_evaluation to txt file
+        for i in table_evaluation_rounded:
+            file.write(tabulate(i, floatfmt=".4f") + '\n')
+    print('Summary of experiment setup and results written to '+directory)
+

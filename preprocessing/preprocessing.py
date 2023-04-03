@@ -262,6 +262,7 @@ def preprocess_ibm():
 
     amounts = income
 
+
     return covariates, labels, amounts, cost_matrix, categorical_variables
 
 

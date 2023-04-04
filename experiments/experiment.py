@@ -28,6 +28,9 @@ from lightgbm import LGBMClassifier
 from imblearn.pipeline import Pipeline, make_pipeline
 
 import warnings
+
+from private_code.preprocessing_private import preprocess_imec, preprocess_cegeka
+
 warnings.filterwarnings('ignore')
 
 
@@ -125,13 +128,18 @@ class Experiment:
 
         if self.datasets['ibm']:
             print('ibm')
-            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_ibm() #TODO: implement function
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_ibm()
         elif self.datasets['acerta']:
             print('acerta')
             covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_acerta() #TODO: implement function
+        elif self.datasets['cegeka']:
+            print('cegeka')
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_cegeka()
         elif self.datasets['ds']:
             print('data scientists dataset')
             covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_ds() #TODO: implement function
+        elif self.datasets['imec']:
+            covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_imec()
         elif self.datasets['kaggle1']:
             print('kaggle1')
             covariates, labels, amounts, cost_matrix, categorical_variables = preprocess_kaggle1()
@@ -169,10 +177,10 @@ class Experiment:
             raise Exception('No dataset specified')
 
         # print properties of dataset:
-        print('nr of features: '+str(covariates.shape[1]) +' +1')
-        print('nr of observations: ' + str(covariates.shape[0]))
+        print('\tnr of features: '+str(covariates.shape[1]) +' +1')
+        print('\tnr of observations: ' + str(covariates.shape[0]))
         imbalance_ratio = (labels == 1).sum() / covariates.shape[0]
-        print(f"The imbalance ratio is {imbalance_ratio:.2f}")
+        print(f"\t{imbalance_ratio*100:.2f}% of observations are churn")
 
         """
         RUN EXPERIMENTS
@@ -242,7 +250,7 @@ class Experiment:
 
             #   Instance-dependent cost-sensitive threshold, calibrated
             if self.thresholding['t_idcs_cal']: #TODO
-                print("todo")
+                raise Exception('t_idcs_cal not implemented yet')
 
                 """
                 # ID CS Threshold with calibrated probabilities (using isotonic regression):
@@ -258,6 +266,7 @@ class Experiment:
 
             #   Class-dependent cost-sensitive threshold, calibrated
             if self.thresholding['t_cdcs_cal']: #TODO
+                raise Exception('t_cdcs_cal not implemented yet')
                 print("todo")
 
             #   Class imbalance threshold
@@ -625,12 +634,17 @@ class Experiment:
 
                 index += 1
 
-            """
+
             # Perceptron
             if self.methodologies['per']:
-                model = Perceptron()
+                method = Perceptron()
                 param_grid = self.hyperparameters['per']
-                gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                pipeline, param_grid = create_pipeline_and_param_grid(self, param_grid, "perceptron__",method)
+
+                gs = GridSearchCV(pipeline, param_grid=param_grid, scoring='accuracy', cv=5)
+
+                #gs = GridSearchCV(model, param_grid=param_grid, scoring='accuracy', cv=5)
 
                 start = time.perf_counter()
                 gs.fit(x_train_val, y_train_val)
@@ -638,15 +652,22 @@ class Experiment:
 
                 print('\tper - best hyperparameters:', gs.best_params_)
 
-                proba_test = gs.decision_function(x_test)
-                proba_val = gs.decision_function(x_val)
+                d_test = gs.decision_function(x_test)
+                proba_test = np.exp(d_test) / (1 + np.exp(d_test))
+                #predictions contain nan values, so impute
+                proba_test[np.isnan(proba_test)] = np.nanmedian(proba_test)
+
+                d_val = gs.decision_function(x_val)
+                proba_val = np.exp(d_val) / (1 + np.exp(d_val))
+                # predictions contain nan values, so impute
+                proba_val[np.isnan(proba_val)] = np.nanmedian(proba_val)
 
                 info = {'time': end - start}
 
                 evaluate_model(proba_val, proba_test, i, index, info)
 
                 index += 1
-            """
+
 
             # Quadratic Discriminant Analysis
             if self.methodologies['qda']:

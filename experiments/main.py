@@ -8,13 +8,6 @@ from experiments import experiment
 # Set project directory:
 DIR = r'C:\Users\u0148775\PycharmProjects\turnover_prediction\workdir'
 
-
-#import torch
-#print('CUDA available?')
-#print(torch.cuda.is_available())
-#if torch.cuda.is_available():
-#    print(torch.cuda.get_device_name(0))
-
 # Specify experimental configuration
 """
 settings
@@ -34,63 +27,60 @@ settings = {
 #    'l2_regularization': False,
 #    'lambda2_options': [0, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1],
 #    'neurons_options': [2**4, 2**5, 2**6, 2**7, 2**8, 2**9, 2**10],
-
-#TODO: print these settings in output as well
     'cat_encoder': 2,   #1: one-hot, 2: WOE,
     'scaler': 1,        #1: standardscaler, 2: minmax scaler, 3... #TODO: add more?
-    'CV_hyperpara_tuning': 5,  # The nr of CV for hyperpara tuning (splits train_val into train and val)
-    'oversampling': 1   #0: none, 1: SMOTE, 2: RandomOversampler, 3: ADASYN
-
+    'CV_hyperpara_tuning': 2,  # The nr of CV for hyperpara tuning (splits train_val into train and val)
+    'oversampling': 3   #0: none, 1: SMOTE, 2: RandomOversampler, 3: ADASYN
 }
 
 datasets = {
     'acerta': False,    # not implemented
-    'cegeka': False,    # not implemented
+    'cegeka': False,    # ok
     'ds': False,        # ok
     'ibm': False,
-    'imec': False,      # not implemented
-    'kaggle1': True,    # ok
+    'imec': False,      # ok
+    'kaggle1': False,    # ok
     'kaggle2': False,   # ok
     'kaggle3': False,   # ok
     'kaggle4': False,   # ok
     'kaggle5': False,   # ok
     'kaggle6': False,   # ok --> to be deleted (perfect predictions, data leakage in features)
     'kaggle7': False,   # ok
-    'medium': False,    # ok
+    'medium': True,    # ok
     'rhuebner': False,  # ok (same as kaggle5, but more extensive)
     'techco': False,    # ok
 }
 
 methodologies = {
-    'ab': True,    # AdaBoost (AB) -                           implemented
+    'ab': False,    # AdaBoost (AB) -                           implemented
     'ann': False,   # Artificial Neural Networks (ANN) - sklearn.neural_network.MLPClassifier #Todo
-    'bnb': True,   # Bernoulli Naive Bayes (BNB) -             implemented
+    'bnb': False,   # Bernoulli Naive Bayes (BNB) -             implemented
     'cb': False,     # CatBoost (CB) -                          implemented #TODO: takes long to train
-    'dt': True,    # Decision Tree (DT)-                       implemented
+    'dt': False,    # Decision Tree (DT)-                       implemented
     'gnb': False,   # Gaussian Naive Bayes (GNB)-               implemented
     'gb': False,    # Gradient Boosting (GB)-                   implemented
-    'knn': True,    # K-Nearest Neighbors (KNN) -              implemented
+    'knn': False,    # K-Nearest Neighbors (KNN) -              implemented
     'lgbm': True,   # LightGBM (LGBM) -                        implemented
     'lda': False,   # Linear Discriminant Analysis (LDA) -      implemented
     'lr': False,    # Logistic Regression (LR) -                implemented
     'mnb': False,   # Multinomial Naive Bayes (MNB) -           implemented
     'pac': False,   # Passive Aggressive Classifier (PAC) -     implemented
-#    'per': True,   # Perceptron (Per) -                        implemented
-    'qda': True,   # Quadratic Discriminant Analysis (QDA) -   implemented #TODO: might give "UserWarning: Variables are collinear"
-    'rf': True,    # Random Forest (RF) -                      implemented
+    'per': True,   # Perceptron (Per) -                        implemented
+    'qda': False,   # Quadratic Discriminant Analysis (QDA) -   implemented #TODO: might give "UserWarning: Variables are collinear"
+    'rf': False,    # Random Forest (RF) -                      implemented
     'rc': False,    # Ridge Classifier (RC) -                   implemented
-    'sgd': True,   # Stochastic Gradient Descent (SGD) -       implemented
+    'sgd': False,   # Stochastic Gradient Descent (SGD) -       implemented
     'svm': False,   # Support Vector Machine (SVM) -             implemented #TODO: takes long to train
-    'xgb': True    # Extreme Gradient Boosting (XGBoost) -     implemented
+    'xgb': False    # Extreme Gradient Boosting (XGBoost) -     implemented
 }
 
 thresholding = {
-    't_idcs': False,        # Instance-dependent cost-sensitive threshold
+    't_idcs': True,        # Instance-dependent cost-sensitive threshold
     't_idcs_cal': False,    # Instance-dependent cost-sensitive threshold with calibrated probabilities
     't_cdcs': False,        # Class-dependent cost-sensitive threshold
     't_cdcs_cal': False,    # Class-dependent cost-sensitive threshold with calibrated probabilities
     't_class_imb': False,   # Class imbalance Threshold
-    't_ins': True           # Class insensitive threshold (0.5)
+    't_ins': False           # Class insensitive threshold (0.5)
 }
 
 evaluators = {
@@ -98,7 +88,7 @@ evaluators = {
     'traditional': True,    # acc, F1, prec, recall
     'ROC': False,           # not implemented
     'AUC': True,
-    'PR': True,
+    'PR': False, #TODO: redundant, included in 'traditional'
     'H_measure': True,     #takes into account mix of precision and recall
     'brier': True,
     'recall_overlap': False,        #not implemented
@@ -112,7 +102,7 @@ evaluators = {
     'rankings': False,  #not implemented
 
     # Other
-    'time': True, #TODO: there might be a bug in checking significance of time as performance metric
+    'time': True, #TODO: there might be a bug in checking significance of time as performance metric (does not detect large differences)
 
     'stat_hypothesis_testing': True #Perform tests on H0: Model performance follows the same distribution
         #In the context of the Friedman test, the null hypothesis is that there are no significant differences between the groups or treatments. The alternative hypothesis is that at least one group differs significantly from the others.
@@ -266,6 +256,8 @@ if __name__ == '__main__':
         file.write(json.dumps(datasets, indent=3))
         file.write('\nMethodologies: ')
         file.write(json.dumps(methodologies, indent=3))
+        file.write('\nThresholding: ')
+        file.write(json.dumps(thresholding, indent=3))
         file.write('\nEvaluators: ')
         file.write(json.dumps(evaluators, indent=3))
         file.write('\nHyperparameters: ')
@@ -273,7 +265,7 @@ if __name__ == '__main__':
         # hyperara_dict: only contains hyperparameters for the methods that are set to True
         hyperpara_dict = {}
         for key, value in methodologies.items():
-            if value:  # if the value is True
+            if value:  # if the value is True (literally)
                 if key in hyperparameters:  # if the key exists in the nested dictionary
                     hyperpara_dict[key] = hyperparameters[key]
         file.write(json.dumps(hyperpara_dict, indent=3))

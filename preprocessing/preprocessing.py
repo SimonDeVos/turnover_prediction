@@ -4,84 +4,26 @@ import numpy as np
 import pandas as pd
 import random
 
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import seaborn as sns
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
+from sklearn.feature_selection import SelectKBest, f_classif
+
 import category_encoders as ce
 from category_encoders import woe
-import time
-
-from imblearn.over_sampling import SMOTE, RandomOverSampler, ADASYN
 
 import warnings
 
-warnings.filterwarnings('ignore',
-                        category=pd.errors.SettingWithCopyWarning)  # TODO: solve warning instead of suppressing it
-
-"""Contents:
-import statements
-3 generic preprocessing functions:
-    def convert_categorical_variables
-    def standardize
-    def handle_missing_data
-
-dataset-specific functions:
-    def preprocess_acerta()
-        return covariates, labels, amounts, cost_matrix, categorical_variables
-    def preprocess_babushkin()
-    def preprocess_eds()
-    def preprocess_ibm()
-
-"""
+warnings.filterwarnings('ignore', category=pd.errors.SettingWithCopyWarning)  # TODO: solve warning instead of suppressing it
 
 # Set random seed
 random.seed(42)
 
 """3 GENERIC PREPROCESSING FUNCTIONS"""
 
-
 def convert_categorical_variables(x_train, y_train, x_val, x_test, categorical_variables, cat_encoder):
     if cat_encoder == 1:
-        """
-        onehot_encoder = OneHotEncoder() #TODO: verder aanvullen
-#        onehot_encoder.fit(x_train, y_train)
-        onehot_encoder.fit(x_train[categorical_variables])
-        
-        x_train = onehot_encoder.transform(x_train)
-        x_val = onehot_encoder.transform(x_val)
-        x_test = onehot_encoder.transform(x_test)
-        """
-        """
-        encoder = OneHotEncoder(handle_unknown='ignore')
-        x_train_cat_encoded = encoder.fit_transform(x_train[:, categorical_variables])
-        x_val_cat_encoded = encoder.transform(x_val[:, categorical_variables])
-        x_test_cat_encoded = encoder.transform(x_test[:, categorical_variables])
 
-        x_train_encoded = np.concatenate((x_train[:, [0]], x_train_cat_encoded.toarray()), axis=1)
-        x_val_encoded = np.concatenate((x_val[:, [0]], x_val_cat_encoded.toarray()), axis=1)
-        x_test_encoded = np.concatenate((x_test[:, [0]], x_test_cat_encoded.toarray()), axis=1)
-        """
-        """
-        numerical_variables = list(set(range(x_train.shape[1])) - set(categorical_variables))
-#        x_num = x_train[:, numerical_variables]  # numerical features
-#        x_cat = x_train[:, categorical_variables]  # categorical features
-
-        # encode categorical features using one-hot encoding
-        encoder = OneHotEncoder(handle_unknown='ignore')
-        x_train_cat_encoded = encoder.fit_transform(x_train[:, categorical_variables])
-        x_val_cat_encoded = encoder.transform(x_val[:, categorical_variables])
-        x_test_cat_encoded = encoder.transform(x_test[:, categorical_variables])
-
-        # concatenate numerical and encoded categorical features
-        x_train = np.concatenate((x_train[:, numerical_variables], x_train_cat_encoded.toarray()), axis=1)
-        x_val = np.concatenate((x_val[:, numerical_variables], x_val_cat_encoded.toarray()), axis=1)
-        x_test = np.concatenate((x_test[:, numerical_variables], x_test_cat_encoded.toarray()), axis=1)
-        """
         ce_one_hot = ce.OneHotEncoder(
-            cols=categorical_variables)  # TODO: question : what happens if categorical values exist in val or test, but not in train? How is this encoded?
+            cols=categorical_variables)
         ce_one_hot.fit(x_train)
         x_train = ce_one_hot.transform(x_train)
         x_val = ce_one_hot.transform(x_val)
@@ -138,55 +80,58 @@ def handle_missing_data(df_train, df_val, df_test, categorical_variables):
         #   Continuous variables: median imputation
         else:
             median = df_train[key].median()
-            #            median = df_train.loc[key].median()
 
-            #            df_train.loc[key] = df_train.loc[key].fillna(median)
-            #            df_train[key] = df_train[key].fillna(median)
             df_train[key].fillna(median, inplace=True)
-            #            df_train.loc[:, key] = df_train[key].fillna(median)
-
-            #            df_val.loc[key] = df_val.loc[key].fillna(median)
-            #            df_val[key] = df_val[key].fillna(median)
             df_val[key].fillna(median, inplace=True)
-            #            df_val.loc[:, key] = df_val[key].fillna(median)
-
-            #            df_test.loc[key] = df_test.loc[key].fillna(median)
-            #            df_test[key] = df_test[key].fillna(median)
             df_test[key].fillna(median, inplace=True)
-    #            df_test.loc[:, key] = df_test[key].fillna(median)
 
     assert df_train.isna().sum().sum() == 0 and df_val.isna().sum().sum() == 0 and df_test.isna().sum().sum() == 0
 
     return df_train, df_val, df_test, categorical_variables
 
 
-def add_prefix_to_hyperparams(param_dict, prefix):  # This is necessary for the make_pipeline() method --> e.g., 'adaboostclassifier__n_estimators': [50, 100, 200],
+def feature_select(x_train, y_train, x_val, x_test, feat_selector, nr_features):
+
+    assert feat_selector in [0, 1], 'Set feature_selector to 0 or 1'
+
+    if feat_selector == 0:
+        print('no feature selection')
+
+        return x_train, x_val, x_test
+
+    if feat_selector == 1:
+        # SelectKBest with f_classif or Chi-squared test
+        #selector = SelectKBest(chi2, k=min(nr_features,x_train.shape[1]))
+        selector = SelectKBest(f_classif, k=min(nr_features, x_train.shape[1]))
+
+        x_train_nonneg = MinMaxScaler().fit(x_train).transform(x_train)
+        selector.fit(x_train_nonneg, y_train)
+        x_train_selected = selector.transform(x_train)
+        x_val_selected = selector.transform(x_val)
+        x_test_selected = selector.transform(x_test)
+
+        print(f'{nr_features} features are selected')
+
+    return x_train_selected, x_val_selected, x_test_selected
+
+
+# This is necessary for the make_pipeline() method --> e.g., 'adaboostclassifier__n_estimators': [50, 100, 200],
+def add_prefix_to_hyperparams(param_dict, prefix):
     new_param_dict = {}
     for key, value in param_dict.items():
         new_param_dict[f'{prefix}{key}'] = value
     return new_param_dict
 
-
-
-"""DATASET-SPECIFIC PREPROCESSING FUNCTIONS"""
-
-
-# read data
-# Drop ID and useless columns
-# fill meaningful NaN
-# transform Turnover feature to 0/1
-# Split into covariates, labels
-# Create cost matrix
-# List categorical variables
-
-
-def preprocess_acerta():  # TODO
-    return covariates, labels, amounts, cost_matrix, categorical_variables
-
-
-def preprocess_cegeka():  # TODO
-    return covariates, labels, amounts, cost_matrix, categorical_variables
-
+############################################
+# DATASET-SPECIFIC PREPROCESSING FUNCTIONS #
+############################################
+    # read data
+    # Drop ID and useless columns
+    # fill meaningful NaN
+    # transform Turnover feature to 0/1
+    # Split into covariates, labels
+    # Create cost matrix --> for extension to cost-sensitive learning
+    # List categorical variables
 
 def preprocess_ds():
     # read data
@@ -252,21 +197,14 @@ def preprocess_ibm():
     n_samples = income.shape[0]
     cost_matrix = np.zeros((n_samples, 2, 2))  # cost_matrix [[TN, FN], [FP, TP]]
     cost_matrix[:, 0, 0] = 0.0
-    cost_matrix[:, 0, 1] = income  # not detected, lose employee, cost is 6 months salary
-    cost_matrix[:, 1, 0] = income  # predicted, not lose employee, cost is fixed cost 500 (intervention)
-    cost_matrix[:, 1, 1] = 0  # predicted, lost employee anyway, cost is fixed cost 500 (intervention)
+    cost_matrix[:, 0, 1] = income
+    cost_matrix[:, 1, 0] = income
+    cost_matrix[:, 1, 1] = 0
 
     # List categorical variables
-    categorical_variables = ['BusinessTravel', 'Department', 'EducationField', 'Gender', 'JobRole', 'MaritalStatus',
-                             'OverTime']
-
+    categorical_variables = ['BusinessTravel', 'Department', 'EducationField', 'Gender', 'JobRole', 'MaritalStatus', 'OverTime']
     amounts = income
 
-
-    return covariates, labels, amounts, cost_matrix, categorical_variables
-
-
-def preprocess_imec():  # TODO
     return covariates, labels, amounts, cost_matrix, categorical_variables
 
 
@@ -305,7 +243,7 @@ def preprocess_kaggle1():
     return covariates, labels, amounts, cost_matrix, categorical_variables
 
 
-def preprocess_kaggle2():  # old name: Babushkin
+def preprocess_kaggle2():
     # read data
     try:
         df = pd.read_csv('data/kaggle2.csv', sep=',')
@@ -340,7 +278,7 @@ def preprocess_kaggle2():  # old name: Babushkin
     return covariates, labels, amounts, cost_matrix, categorical_variables
 
 
-def preprocess_kaggle3():  # TODO
+def preprocess_kaggle3():
     # read data
     try:
         df = pd.read_csv('data/kaggle3.csv', sep=',')
@@ -380,7 +318,7 @@ def preprocess_kaggle3():  # TODO
     return covariates, labels, amounts, cost_matrix, categorical_variables
 
 
-def preprocess_kaggle4():  # TODO
+def preprocess_kaggle4():
     # read data
     try:
         df = pd.read_csv('data/kaggle4.csv', sep=',')

@@ -4,7 +4,7 @@ from experiments import experiment
 import json
 
 # Set project directory:
-DIR = r'C:\Users\u0148775\PycharmProjects\turnover_prediction\workdir\_results20231219' #todo: anonymize
+DIR = r'C:\Users\...\...\...'
 
 # Specify experiment configuration
 settings = {

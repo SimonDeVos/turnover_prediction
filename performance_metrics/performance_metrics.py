@@ -1,12 +1,16 @@
-#TODO: imports
+
+import os
 import warnings
 
 import numpy as np
+#import wandb
 from sklearn import metrics
+from sklearn.metrics import precision_recall_curve, auc, accuracy_score, f1_score
 from tabulate import tabulate
 from scipy.stats import spearmanr, combine_pvalues, friedmanchisquare
 from scikit_posthocs import posthoc_nemenyi_friedman
 from hmeasure import h_score
+import csv
 
 def savings(cost_matrix, labels, predictions):
     cost_without = cost_without_algorithm(cost_matrix, labels)
@@ -69,20 +73,91 @@ def get_performance_metrics(evaluators, evaluation_matrices, i, index, cost_matr
             print('\t\tWARNING: Precision = 0!')
         else:
             f1_score = 2 * (precision * recall) / (precision + recall)
-        #TODO: add sensitivity and specificity?
 
         evaluation_matrices['traditional'][index, i] = np.array([accuracy, recall, precision, f1_score])
 
+    if evaluators['Accuracy']:
+        true_pos = (predictions * labels).sum()
+        true_neg = ((1 - predictions) * (1 - labels)).sum()
+        false_pos = (predictions * (1 - labels)).sum()
+        false_neg = ((1 - predictions) * labels).sum()
+        accuracy = (true_pos + true_neg) / len(labels)
 
-    if evaluators['ROC']:
-        fpr, tpr, roc_thresholds = metrics.roc_curve(y_true=labels, y_score=probabilities)
+        evaluation_matrices['Accuracy'][index, i] = accuracy
 
-        evaluation_matrices['ROC'][index, i] = np.array([fpr, tpr, roc_thresholds])
+    if evaluators['Recall']:
+        true_pos = (predictions * labels).sum()
+        true_neg = ((1 - predictions) * (1 - labels)).sum()
+        false_pos = (predictions * (1 - labels)).sum()
+        false_neg = ((1 - predictions) * labels).sum()
+        recall = true_pos / (true_pos + false_neg)
+        evaluation_matrices['Recall'][index, i] = recall
 
-    if evaluators['AUC']:
-        auc = metrics.roc_auc_score(y_true=labels, y_score=probabilities)
+    if evaluators['Precision']:
+        true_pos = (predictions * labels).sum()
+        true_neg = ((1 - predictions) * (1 - labels)).sum()
+        false_pos = (predictions * (1 - labels)).sum()
+        false_neg = ((1 - predictions) * labels).sum()
 
-        evaluation_matrices['AUC'][index, i] = auc
+        # Make sure no division by 0!
+        if (true_pos == 0) and (false_pos == 0):
+            precision = 0
+            print('\t\tWARNING: No positive predictions!')
+        else:
+            precision = true_pos / (true_pos + false_pos)
+        evaluation_matrices['Precision'][index, i] = precision
+
+    if evaluators['Specificity']:
+        true_pos = (predictions * labels).sum()
+        true_neg = ((1 - predictions) * (1 - labels)).sum()
+        false_pos = (predictions * (1 - labels)).sum()
+        false_neg = ((1 - predictions) * labels).sum()
+
+        # Make sure no division by 0!
+        if (true_pos == 0) and (false_pos == 0):
+            specificity = 0
+            print('\t\tWARNING: No positive predictions!')
+        else:
+            specificity = true_neg / (true_neg + false_pos)
+        evaluation_matrices['Specificity'][index, i] = specificity
+
+
+    if evaluators['F1']:
+        true_pos = (predictions * labels).sum()
+        true_neg = ((1 - predictions) * (1 - labels)).sum()
+        false_pos = (predictions * (1 - labels)).sum()
+        false_neg = ((1 - predictions) * labels).sum()
+
+        recall = true_pos / (true_pos + false_neg)
+        # Make sure no division by 0!
+        if (true_pos == 0) and (false_pos == 0):
+            precision = 0
+            print('\t\tWARNING: No positive predictions!')
+        else:
+            precision = true_pos / (true_pos + false_pos)
+        if precision == 0:
+            f1_score = 0
+            print('\t\tWARNING: Precision = 0!')
+        else:
+            f1_score = 2 * (precision * recall) / (precision + recall)
+
+        evaluation_matrices['F1'][index, i] = f1_score
+
+
+    if evaluators['AUC-PR']:
+        precision, recall, _ = precision_recall_curve(labels, probabilities)
+        auc_pr = auc(recall, precision)
+
+        evaluation_matrices['AUC-PR'][index, i] = auc_pr
+
+#    if evaluators['ROC']:
+#        fpr, tpr, roc_thresholds = metrics.roc_curve(y_true=labels, y_score=probabilities)
+#        evaluation_matrices['ROC'][index, i] = np.array([fpr, tpr, roc_thresholds])
+
+    if evaluators['AUC-ROC']:
+        auc_roc = metrics.roc_auc_score(y_true=labels, y_score=probabilities)
+
+        evaluation_matrices['AUC-ROC'][index, i] = auc_roc
 
     if evaluators['savings']:
         # To do: function - savings
@@ -140,11 +215,9 @@ def get_performance_metrics(evaluators, evaluation_matrices, i, index, cost_matr
 
         evaluation_matrices['time'][index, i] = info['time']
 
-    #TODO: alle andere metrics aanvullen met if evaluators['..']: statements
-
     return evaluation_matrices
 
-def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_matrices, directory, name):    #TODO: hele functie grondig bekijken
+def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_matrices, settings, dataset, directory, name):
 
     table_evaluation = []
     n_methodologies = sum(methodologies.values())
@@ -156,7 +229,7 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
 
     if evaluators['traditional']:
 
-        table_traditional = [['Method', 'Accuracy','sd_acc', 'Recall','sd_rec', 'Precision','sd_pr', 'F1-score','sd_f1', 'AR', 'sd_ar']]
+        table_traditional = [['Method', 'Accuracy','Acc_sd', 'Recall','Rec_sd', 'Precision','Pr_sd', 'F1-score','F1_sd', 'F1_AR', 'F1_AR_sd']]
 
         # Compute F1 rankings (- as higher is better)
         all_f1s = []
@@ -187,6 +260,7 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         print(tabulate(table_traditional, headers="firstrow", floatfmt=("", ".4f",".4f",".4f",".4f",".4f", ".4f", ".4f", ".4f", ".4f", ".4f")))
         table_evaluation.append(table_traditional)
 
+
         if evaluators['stat_hypothesis_testing']:
             if n_methodologies < 2:
                 raise Warning('"stat_hypothesis_testing" is True, but not enough methods are compare. At least 2 are needed')
@@ -206,15 +280,13 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
                     print(nemenyi)
             elif np.array(all_f1s).shape[1] < 3:
                 raise Warning('"stat_hypothesis_testing" is True, but not enough measurements. At least 3 are needed')
-
         print('_________________________________________________________________________')
 
-    if evaluators['AUC']:
-
-        table_auc = [['Method', 'AUC', 'sd_auc', 'AR', 'sd_auc']]
+    if evaluators['Accuracy']:
+        table_acc = [['Method', 'Acc', 'Acc_sd', 'Acc_AR', 'Acc_AR_sd']]
 
         # Compute rankings (- as higher is better)
-        ranked_args = (-evaluation_matrices['AUC']).argsort(axis=0)
+        ranked_args = (-evaluation_matrices['Accuracy']).argsort(axis=0)
         rankings = np.arange(len(ranked_args))[ranked_args.argsort(axis=0)]
         rankings = rankings + 1
         avg_rankings = rankings.mean(axis=1)
@@ -224,39 +296,181 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         index = 0
         for item, value in methodologies.items():
             if value:
-                table_auc.append([item, evaluation_matrices['AUC'][index, :].mean(),
-                                  np.sqrt(evaluation_matrices['AUC'][index, :].var()), avg_rankings[index],
+                table_acc.append([item, evaluation_matrices['Accuracy'][index, :].mean(),
+                                  np.sqrt(evaluation_matrices['Accuracy'][index, :].var()), avg_rankings[index],
                                   sd_rankings[index]])
                 index += 1
 
-        print(tabulate(table_auc, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
-        table_evaluation.append(table_auc)
+        print(tabulate(table_acc, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
+        table_evaluation.append(table_acc)
+        print('_________________________________________________________________________')
+
+    if evaluators['Recall']:
+        table_rec = [['Method', 'Recall', 'Rec_sd', 'Rec_AR', 'Rec_AR_sd']]
+
+        # Compute rankings (- as higher is better)
+        ranked_args = (-evaluation_matrices['Recall']).argsort(axis=0)
+        rankings = np.arange(len(ranked_args))[ranked_args.argsort(axis=0)]
+        rankings = rankings + 1
+        avg_rankings = rankings.mean(axis=1)
+        sd_rankings = np.sqrt(rankings.var(axis=1))
+
+        # Summarize per method
+        index = 0
+        for item, value in methodologies.items():
+            if value:
+                table_rec.append([item, evaluation_matrices['Recall'][index, :].mean(),
+                                  np.sqrt(evaluation_matrices['Recall'][index, :].var()), avg_rankings[index],
+                                  sd_rankings[index]])
+                index += 1
+
+        print(tabulate(table_rec, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
+        table_evaluation.append(table_rec)
+        print('_________________________________________________________________________')
+
+    if evaluators['Precision']:
+        table_prec = [['Method', 'Precision', 'Prec_sd', 'Prec_AR', 'Prec_AR_sd']]
+
+        # Compute rankings (- as higher is better)
+        ranked_args = (-evaluation_matrices['Precision']).argsort(axis=0)
+        rankings = np.arange(len(ranked_args))[ranked_args.argsort(axis=0)]
+        rankings = rankings + 1
+        avg_rankings = rankings.mean(axis=1)
+        sd_rankings = np.sqrt(rankings.var(axis=1))
+
+        # Summarize per method
+        index = 0
+        for item, value in methodologies.items():
+            if value:
+                table_prec.append([item, evaluation_matrices['Precision'][index, :].mean(),
+                                  np.sqrt(evaluation_matrices['Precision'][index, :].var()), avg_rankings[index],
+                                  sd_rankings[index]])
+                index += 1
+
+        print(tabulate(table_prec, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
+        table_evaluation.append(table_prec)
+        print('_________________________________________________________________________')
+
+    if evaluators['Specificity']:
+        table_spec = [['Method', 'Specificity', 'Spec_sd', 'Spec_AR', 'Spec_AR_sd']]
+
+        # Compute rankings (- as higher is better)
+        ranked_args = (-evaluation_matrices['Specificity']).argsort(axis=0)
+        rankings = np.arange(len(ranked_args))[ranked_args.argsort(axis=0)]
+        rankings = rankings + 1
+        avg_rankings = rankings.mean(axis=1)
+        sd_rankings = np.sqrt(rankings.var(axis=1))
+
+        # Summarize per method
+        index = 0
+        for item, value in methodologies.items():
+            if value:
+                table_spec.append([item, evaluation_matrices['Specificity'][index, :].mean(),
+                                  np.sqrt(evaluation_matrices['Specificity'][index, :].var()), avg_rankings[index],
+                                  sd_rankings[index]])
+                index += 1
+
+        print(tabulate(table_spec, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
+        table_evaluation.append(table_spec)
+        print('_________________________________________________________________________')
+
+    if evaluators['F1']:
+        table_F1 = [['Method', 'F1', 'F1_sd', 'F1_AR', 'F1_AR_sd']]
+
+        # Compute rankings (- as higher is better)
+        ranked_args = (-evaluation_matrices['F1']).argsort(axis=0)
+        rankings = np.arange(len(ranked_args))[ranked_args.argsort(axis=0)]
+        rankings = rankings + 1
+        avg_rankings = rankings.mean(axis=1)
+        sd_rankings = np.sqrt(rankings.var(axis=1))
+
+        # Summarize per method
+        index = 0
+        for item, value in methodologies.items():
+            if value:
+                table_F1.append([item, evaluation_matrices['F1'][index, :].mean(),
+                                  np.sqrt(evaluation_matrices['F1'][index, :].var()), avg_rankings[index],
+                                  sd_rankings[index]])
+                index += 1
+
+        print(tabulate(table_F1, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
+        table_evaluation.append(table_F1)
+
+
+        print('_________________________________________________________________________')
+
+    if evaluators['AUC-PR']:
+        table_aucpr = [['Method', 'AUC-PR', 'AUC-PR_sd', 'AUC-PR_AR', 'AUC-PR_AR_sd']]
+
+        # Compute rankings (- as higher is better)
+        ranked_args = (-evaluation_matrices['AUC-PR']).argsort(axis=0)
+        rankings = np.arange(len(ranked_args))[ranked_args.argsort(axis=0)]
+        rankings = rankings + 1
+        avg_rankings = rankings.mean(axis=1)
+        sd_rankings = np.sqrt(rankings.var(axis=1))
+
+        # Summarize per method
+        index = 0
+        for item, value in methodologies.items():
+            if value:
+                table_aucpr.append([item, evaluation_matrices['AUC-PR'][index, :].mean(),
+                                  np.sqrt(evaluation_matrices['AUC-PR'][index, :].var()), avg_rankings[index],
+                                  sd_rankings[index]])
+                index += 1
+
+        print(tabulate(table_aucpr, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
+        table_evaluation.append(table_aucpr)
+
+        print('_________________________________________________________________________')
+
+    if evaluators['AUC-ROC']:
+
+        table_aucroc = [['Method', 'AUC-ROC', 'AUC-ROC_sd', 'AUC-ROC_AR', 'AUC-ROC_AR_sd']]
+
+        # Compute rankings (- as higher is better)
+        ranked_args = (-evaluation_matrices['AUC-ROC']).argsort(axis=0)
+        rankings = np.arange(len(ranked_args))[ranked_args.argsort(axis=0)]
+        rankings = rankings + 1
+        avg_rankings = rankings.mean(axis=1)
+        sd_rankings = np.sqrt(rankings.var(axis=1))
+
+        # Summarize per method
+        index = 0
+        for item, value in methodologies.items():
+            if value:
+                table_aucroc.append([item, evaluation_matrices['AUC-ROC'][index, :].mean(),
+                                  np.sqrt(evaluation_matrices['AUC-ROC'][index, :].var()), avg_rankings[index],
+                                  sd_rankings[index]])
+                index += 1
+
+        print(tabulate(table_aucroc, headers="firstrow", floatfmt=("", ".4f", ".4f", ".4f", ".4f")))
+        table_evaluation.append(table_aucroc)
 
         if evaluators['stat_hypothesis_testing']:
             if n_methodologies < 2:
                 raise Warning('"stat_hypothesis_testing" is True, but not enough methods are compare. At least 2 are needed')
 
             # Do tests if enough measurements are available (at least 3)
-            if evaluation_matrices['AUC'].shape[1] > 2:
-                friedchisq = friedmanchisquare(*evaluation_matrices['AUC'].T)
-                print('\nAUC - Friedman test')
+            if evaluation_matrices['AUC-ROC'].shape[1] > 2:
+                friedchisq = friedmanchisquare(*evaluation_matrices['AUC-ROC'].T)
+                print('\nAUC-ROC - Friedman test')
                 print('H0: There are no significant differences between the models')
                 print('\tChi-square:\t%.4f' % friedchisq[0])
                 print('\tp-value:\t%.4f' % friedchisq[1])
                 if friedchisq[1] < 0.05:  # If p-value is significant, do Nemenyi post hoc test
                     print('\t\t'+str(round(friedchisq[1],4)) +" < 0.05: at least one model differs significantly from the others")
-                    nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['AUC'].T.astype(dtype=np.float32))
+                    nemenyi = posthoc_nemenyi_friedman(evaluation_matrices['AUC-ROC'].T.astype(dtype=np.float32))
                     print('\nNemenyi post hoc test:')
                     print(nemenyi)
 
-            elif evaluation_matrices['AUC'].shape[1] < 3:
+            elif evaluation_matrices['AUC-ROC'].shape[1] < 3:
                 raise Warning('"stat_hypothesis_testing" is True, but not enough measurements. At least 3 are needed')
 
         print('_________________________________________________________________________')
 
     if evaluators['savings']:
 
-        table_savings = [['Method', 'Savings', 'sd', 'AR', 'sd']]
+        table_savings = [['Method', 'Savings', 'Savings_sd', 'Savings_AR', 'Savings_AR_sd']]
 
         # Compute rankings (- as higher is better)
         ranked_args = (-evaluation_matrices['savings']).argsort(axis=0)
@@ -286,7 +500,7 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
 
     if evaluators['AEC']:
 
-        table_aec = [['Method', 'AEC', 'sd_aec', 'AR', 'sd_ar']]
+        table_aec = [['Method', 'AEC', 'AEC_sd', 'AEC_AR', 'AEC_AR_sd']]
 
         # Compute rankings (lower is better)
         ranked_args = (evaluation_matrices['AEC']).argsort(axis=0)
@@ -341,7 +555,7 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         print('_________________________________________________________________________')
 
     if evaluators['PR']:
-        table_ap = [['Method', 'Avg Prec', 'sd_prec', 'AR', 'sd_ar']]
+        table_ap = [['Method', 'Avg_Prec', 'Avg_Prec_sd', 'Avg_Prec_AR', 'Avg_Prec_AR_sd']]
 
         index = 0
         # fig2, ax2 = plt.subplots()
@@ -421,7 +635,7 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
 
     if evaluators['H_measure']:
 
-        table_H = [['Method', 'H_measure', 'sd', 'AR', 'sd']]
+        table_H = [['Method', 'H_measure', 'H_measure_sd', 'H_measure_AR', 'H_measure_AR_sd']]
         # Compute rankings (- as higher is better)
         ranked_args = (-evaluation_matrices['H_measure']).argsort(axis=0)
         rankings = np.arange(len(ranked_args))[ranked_args.argsort(axis=0)]
@@ -462,9 +676,8 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
 
         print('_________________________________________________________________________')
 
-
     if evaluators['brier']:
-        table_brier = [['Method', 'Brier score', 'sd', 'AR', 'sd']]
+        table_brier = [['Method', 'Brier_score', 'Brier_score_sd', 'Brier_score_AR', 'Brier_score_AR_sd']]
 
         # Compute rankings (lower is better)
         ranked_args = (evaluation_matrices['brier']).argsort(axis=0)
@@ -507,7 +720,7 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
 
     if evaluators['time']:
 
-        table_time = [['Method', 'Time', 'sd', 'AR', 'sd']]
+        table_time = [['Method', 'Time', 'Time_sd', 'Time_AR', 'Time_AR_sd']]
 
         # Compute rankings (lower is better)
         ranked_args = (evaluation_matrices['time']).argsort(axis=0)
@@ -549,12 +762,47 @@ def evaluate_experiments(evaluators, methodologies, thresholding, evaluation_mat
         print('_________________________________________________________________________')
 
 
-    table_evaluation_rounded = round_nested_list(table_evaluation) #Floats have max 4 decimals for readibility.
+    table_evaluation_rounded = round_nested_list(table_evaluation) # Floats have max 4 decimals for readability
 
     #Add ('a': append) results of evaluators to the summary file
     with open(directory, 'a') as file:
-        #wite table_evaluation to txt file
         for i in table_evaluation_rounded:
             file.write(tabulate(i, floatfmt=".4f") + '\n')
+
+    # Function to flatten a nested dictionary
+    def flatten_dict(d, parent_key='', sep='_'):
+        flat_dict = {}
+        for k, v in d.items():
+            new_key = f"{parent_key}{sep}{k}" if parent_key else k
+            if isinstance(v, dict):
+                flat_dict.update(flatten_dict(v, new_key, sep=sep))
+            else:
+                flat_dict[new_key] = v
+        return flat_dict
+
+    result_dict = settings
+    result_dict.update(dataset)
+    result_dict.update(thresholding)
+
+    for header_row, *data_rows in table_evaluation_rounded:
+        for row in data_rows:
+            method = row[0]
+            for i in range(1, len(header_row)):
+                key = header_row[i]
+                value = row[i]
+                if method not in result_dict:
+                    result_dict[method] = {}
+                result_dict[method][key] = value
+
+    # Flatten the result_dict
+    flat_result_dict = flatten_dict(result_dict)
+
+    print(flat_result_dict)
+
+    # Insert WandB here:
+#    wandb.init(project='projectname', entity='entityname', reinit=False, save_code=True)
+#    wandb.log(flat_result_dict)
+#    wandb.finish()
+
     print('Summary of experiment setup and results written to '+directory)
 

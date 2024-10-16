@@ -16,4 +16,4 @@ Simon De Vos (corresp. author), Christopher Bockel-Rickermann, Jente Van Belle &
 
 **Please consider citing as:**
 
-De Vos, S., Bockel-Rickermann, C., Van Belle, J. et al. Predicting Employee Turnover: Scoping and Benchmarking the State-of-the-Art. Bus Inf Syst Eng (2024). https://doi.org/10.1007/s12599-024-00898-z
+De Vos, S., Bockel-Rickermann, C., Van Belle, J., & Verbeke, W. (2024). Predicting Employee Turnover: Scoping and Benchmarking the State-of-the-Art. Business & Information Systems Engineering. doi:10.1007/s12599-024-00898-z

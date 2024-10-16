@@ -1,4 +1,4 @@
-This is the code associated with the paper '_Employee turnover analytics: Scoping and benchmarking the state-of-the-art_'.
+This is the code associated with the paper '_Employee turnover analytics: Scoping and benchmarking the state-of-the-art_', published in _Business & Information Systems Engineering_. The article can be found [here](https://link.springer.com/article/10.1007/s12599-024-00898-z).
 
 **Instructions:**
 - In ['main.py'](https://github.com/SimonDeVos/turnover_prediction/blob/master/experiments/main.py):
@@ -12,8 +12,8 @@ This is the code associated with the paper '_Employee turnover analytics: Scopin
 
 **About the authors:** 
 
-_anonymized repo_
+Simon De Vos (corresp. author), Christopher Bockel-Rickermann, Jente Van Belle & Wouter Verbeke
 
-**Cite as**
+**Please consider citing as:**
 
-_anonymized repo_
+De Vos, S., Bockel-Rickermann, C., Van Belle, J. et al. Predicting Employee Turnover: Scoping and Benchmarking the State-of-the-Art. Bus Inf Syst Eng (2024). https://doi.org/10.1007/s12599-024-00898-z
